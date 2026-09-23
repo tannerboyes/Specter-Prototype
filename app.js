@@ -395,6 +395,36 @@ function nextBenchNumber() {
   return n;
 }
 
+function resizeImageFileToDataUrl(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round(height * (maxDim / width));
+            width = maxDim;
+          } else {
+            width = Math.round(width * (maxDim / height));
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Could not read image"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function extractDomainLabel(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, "").toUpperCase();
@@ -624,8 +654,14 @@ function benchOptionBlockHtml(blockId, number, opt) {
       <input type="url" id="${blockId}-link" class="bo-link" placeholder="https://..." value="${escapeAttr(opt.link || "")}" />
 
       <label class="field-label" for="${blockId}-picture">Picture (optional)</label>
-      <input type="url" id="${blockId}-picture" class="bo-picture" placeholder="https://....jpg" value="${escapeAttr(opt.picture || "")}" />
-      <p class="field-hint">Press and hold the product photo on that page and choose Copy (on a computer, right-click &rarr; Copy image address), then paste it here. It shows as a thumbnail linked to the page.</p>
+      <input type="url" id="${blockId}-picture" class="bo-picture" placeholder="https://....jpg" value="${escapeAttr(opt.picture && !opt.picture.startsWith("data:") ? opt.picture : "")}" />
+      <p class="field-hint">Press and hold the product photo on that page and choose Copy (on a computer, right-click &rarr; Copy image address), then paste it here. Only shows as a thumbnail once the site is deployed live — a pasted link never renders in this preview.</p>
+
+      <label class="field-label" for="${blockId}-picture-file">Or upload a photo</label>
+      <input type="file" id="${blockId}-picture-file" class="bo-picture-file" accept="image/*" />
+      <p class="field-hint">Works everywhere, including this preview. The photo is resized and stored with the item.</p>
+      <img class="bo-picture-preview" style="display:${opt.picture && opt.picture.startsWith("data:") ? "block" : "none"}" src="${opt.picture && opt.picture.startsWith("data:") ? escapeAttr(opt.picture) : ""}" alt="Uploaded preview" />
+      <input type="hidden" class="bo-picture-data" value="${opt.picture && opt.picture.startsWith("data:") ? escapeAttr(opt.picture) : ""}" />
 
       <label class="field-label" for="${blockId}-notes">Notes</label>
       <textarea id="${blockId}-notes" class="bo-notes" rows="2">${escapeHtml(opt.notes || "")}</textarea>
@@ -726,12 +762,30 @@ function wireBenchForm() {
 
   optionsContainer.addEventListener("change", (e) => {
     const linkInput = e.target.closest(".bo-link");
-    if (!linkInput || !linkInput.value.trim()) return;
-    const block = linkInput.closest(".bench-option-block");
-    const vendorInput = block.querySelector(".bo-vendor");
-    if (vendorInput && !vendorInput.value.trim()) {
-      const guess = guessVendorFromUrl(linkInput.value.trim());
-      if (guess) vendorInput.value = guess;
+    if (linkInput && linkInput.value.trim()) {
+      const block = linkInput.closest(".bench-option-block");
+      const vendorInput = block.querySelector(".bo-vendor");
+      if (vendorInput && !vendorInput.value.trim()) {
+        const guess = guessVendorFromUrl(linkInput.value.trim());
+        if (guess) vendorInput.value = guess;
+      }
+      return;
+    }
+
+    const fileInput = e.target.closest(".bo-picture-file");
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      const block = fileInput.closest(".bench-option-block");
+      const dataInput = block.querySelector(".bo-picture-data");
+      const preview = block.querySelector(".bo-picture-preview");
+      resizeImageFileToDataUrl(fileInput.files[0], 480, 0.75)
+        .then((dataUrl) => {
+          dataInput.value = dataUrl;
+          preview.src = dataUrl;
+          preview.style.display = "block";
+        })
+        .catch(() => {
+          alert("Couldn't read that image — try a different file.");
+        });
     }
   });
 
@@ -753,7 +807,7 @@ function wireBenchForm() {
         vendor: block.querySelector(".bo-vendor").value.trim(),
         partNumber: block.querySelector(".bo-partnum").value.trim(),
         link: block.querySelector(".bo-link").value.trim(),
-        picture: block.querySelector(".bo-picture").value.trim(),
+        picture: block.querySelector(".bo-picture-data").value.trim() || block.querySelector(".bo-picture").value.trim(),
         notes: block.querySelector(".bo-notes").value.trim(),
         moreLinks: block.querySelector(".bo-morelinks").value.trim(),
         recommended: blockId === recommendedBlockId,

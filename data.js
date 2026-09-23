@@ -18,7 +18,7 @@ const DATA = {
     updated: "2026-09-23",
     // Change this to whatever you want the site's password to be.
     // Anyone entering it correctly stays unlocked on that browser/device.
-    sharedPassword: "specter2026",
+    sharedPassword: "rarebirds",
   },
 
   // Major vehicle systems for Car No. 1

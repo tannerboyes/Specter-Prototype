@@ -21,7 +21,7 @@ function renderDashboard() {
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `
-    <h1>${DATA.meta.carName}</h1>
+    <h1>Development Dashboard</h1>
     <p class="view-sub">${DATA.meta.tagline}</p>
 
     <div class="grid">
@@ -45,7 +45,7 @@ function renderDashboard() {
     </div>
 
     <h2>Recent Log Entries</h2>
-    ${DATA.log.slice(0, 3).map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
+    ${allLogEntries().slice(0, 3).map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
   `;
 }
 
@@ -241,6 +241,7 @@ function closeTaskForm() {
   taskFormOpen = false;
   taskEditingId = null;
   renderTasks();
+  renderDashboard();
 }
 
 function taskItemCardHtml(item) {
@@ -288,6 +289,7 @@ function wireTaskList() {
       item.doneAt = null;
       saveTaskItems();
       renderTasks();
+      renderDashboard();
     });
   });
 
@@ -298,7 +300,13 @@ function wireTaskList() {
       item.done = true;
       item.doneAt = new Date().toISOString().slice(0, 10);
       saveTaskItems();
+      addLogEntry(
+        "Task completed",
+        `"${item.whatNeedsDoing}"${item.category ? " (" + item.category + ")" : ""} marked done${item.submitter ? " by " + item.submitter : ""}.`
+      );
       renderTasks();
+      renderDashboard();
+      renderLog();
     });
   });
 
@@ -308,6 +316,7 @@ function wireTaskList() {
       taskItems = taskItems.filter((i) => i.id !== btn.dataset.item);
       saveTaskItems();
       renderTasks();
+      renderDashboard();
     });
   });
 }
@@ -339,12 +348,36 @@ function renderTasks() {
 
 /* ---------- Build Log ---------- */
 
+const LOG_STORAGE_KEY = "specter-activity-log";
+let activityLog = [];
+
+function loadActivityLog() {
+  try {
+    const raw = localStorage.getItem(LOG_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
+function saveActivityLog() {
+  try { localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(activityLog)); } catch (e) {}
+}
+
+function addLogEntry(title, body) {
+  activityLog.unshift({ date: new Date().toISOString().slice(0, 10), title, body });
+  saveActivityLog();
+}
+
+function allLogEntries() {
+  return [...activityLog, ...DATA.log].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
 function logEntryHtml(entry) {
   return `
     <div class="log-entry">
-      <div class="log-date">${entry.date}</div>
-      <div class="log-title">${entry.title}</div>
-      <div class="log-body">${entry.body}</div>
+      <div class="log-date">${escapeHtml(entry.date)}</div>
+      <div class="log-title">${escapeHtml(entry.title)}</div>
+      <div class="log-body">${escapeHtml(entry.body)}</div>
     </div>
   `;
 }
@@ -353,7 +386,7 @@ function renderLog() {
   document.getElementById("log").innerHTML = `
     <h1>Build Log</h1>
     <p class="view-sub">Dated journal of progress, decisions, and notes.</p>
-    ${DATA.log.map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
+    ${allLogEntries().map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
   `;
 }
 
@@ -701,6 +734,7 @@ function closeBenchForm() {
   benchFormOpen = false;
   benchEditingId = null;
   renderBench();
+  renderDashboard();
 }
 
 /* ---- Saved item list ---- */
@@ -794,7 +828,14 @@ function wireBenchList() {
       item.status = "approved";
       item.approvedOptionId = btn.dataset.option;
       saveBenchItems();
+      const chosen = item.options.find((o) => o.id === item.approvedOptionId);
+      addLogEntry(
+        "Bench item approved",
+        `"${item.partName}" approved to order${chosen ? " — " + chosen.whatItIs : ""}.`
+      );
       renderBench();
+      renderDashboard();
+      renderLog();
     });
   });
 
@@ -806,6 +847,7 @@ function wireBenchList() {
       item.approvedOptionId = null;
       saveBenchItems();
       renderBench();
+      renderDashboard();
     });
   });
 
@@ -815,6 +857,7 @@ function wireBenchList() {
       benchItems = benchItems.filter((i) => i.id !== btn.dataset.item);
       saveBenchItems();
       renderBench();
+      renderDashboard();
     });
   });
 }
@@ -874,6 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("updated").textContent = `Updated ${DATA.meta.updated}`;
   benchItems = loadBenchItems();
   taskItems = loadTaskItems();
+  activityLog = loadActivityLog();
   renderDashboard();
   renderTooling();
   renderTasks();

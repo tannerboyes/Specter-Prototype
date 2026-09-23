@@ -20,6 +20,10 @@
 
 * { box-sizing: border-box; }
 
+button, input, textarea, select {
+  font-family: inherit;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -237,7 +241,8 @@ h2 {
   margin: 0 0 4px;
 }
 
-#bench-form {
+#bench-form,
+#task-form {
   display: flex;
   flex-direction: column;
 }
@@ -260,20 +265,24 @@ h2 {
 
 #bench-form input[type="text"],
 #bench-form input[type="url"],
-#bench-form textarea {
+#bench-form textarea,
+#task-form input[type="text"],
+#task-form input[type="url"],
+#task-form textarea {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px 12px;
   font-size: 14px;
   color: var(--text);
-  font-family: inherit;
   width: 100%;
   resize: vertical;
 }
 
 #bench-form input:focus,
-#bench-form textarea:focus {
+#bench-form textarea:focus,
+#task-form input:focus,
+#task-form textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }

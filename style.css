@@ -193,29 +193,7 @@ h2 {
 
 /* ---------- Bench ---------- */
 
-.bench-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.bench-form input[type="text"] {
-  flex: 1;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--text);
-  font-family: inherit;
-}
-
-.bench-form input[type="text"]:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
-.bench-form button {
+.bench-primary-btn {
   all: unset;
   cursor: pointer;
   background: var(--accent);
@@ -226,44 +204,320 @@ h2 {
   font-weight: 600;
 }
 
-.bench-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 8px;
-}
-
-.bench-check {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.bench-item.done .bench-check span {
-  text-decoration: line-through;
-  color: var(--text-dim);
-}
-
-.bench-delete {
+.bench-secondary-btn {
   all: unset;
   cursor: pointer;
   color: var(--text-dim);
-  font-size: 18px;
-  line-height: 1;
-  padding: 4px 9px;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.bench-delete:hover {
+.bench-secondary-btn:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+/* ---- Form ---- */
+
+.bench-form-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px 24px;
+  margin-bottom: 20px;
+}
+
+.bench-form-title {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+#bench-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin: 16px 0 6px;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+#bench-form input[type="text"],
+#bench-form input[type="url"],
+#bench-form textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text);
+  font-family: inherit;
+  width: 100%;
+  resize: vertical;
+}
+
+#bench-form input:focus,
+#bench-form textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.bench-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pill {
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.pill:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+.pill.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.bench-options-divider {
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.bench-option-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px 18px;
+  margin-top: 14px;
+}
+
+.bench-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bench-option-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.bench-remove-option {
+  all: unset;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   color: var(--red);
-  background: var(--red-bg);
+}
+
+.bench-option-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bench-recommend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.bench-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* ---- Saved items ---- */
+
+.bench-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bench-item-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.bench-item-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.bench-before {
+  font-size: 13px;
+  color: var(--text-dim);
+  background: var(--panel-2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin: 10px 0 0;
+}
+
+.bench-before strong {
+  color: var(--text);
+}
+
+.bench-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.bench-option-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--bg);
+}
+
+.bench-option-card.approved {
+  border-color: var(--green);
+}
+
+.bench-option-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bench-option-what {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bench-option-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.bench-thumb-link {
+  flex-shrink: 0;
+}
+
+.bench-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.bench-option-link {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--accent);
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+.bench-more-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.bench-more-links a {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.bench-approve-btn {
+  all: unset;
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  border: 1px solid var(--green);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.bench-approve-btn:hover {
+  background: var(--green-bg);
+}
+
+.badge-recommended {
+  background: var(--yellow-bg);
+  color: var(--yellow);
+}
+
+.bench-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.bench-delete-item {
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 9px 14px;
+}
+
+.bench-delete-item:hover {
+  color: var(--red);
+}
+
+@media (max-width: 520px) {
+  .bench-option-row { grid-template-columns: 1fr; }
+  .bench-option-card-head { flex-direction: column; }
 }
 
 /* ---------- Badges ---------- */

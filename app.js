@@ -44,15 +44,6 @@ function renderDashboard() {
       </div>` : ""}
     </div>
 
-    <h2>Vehicle Systems Snapshot</h2>
-    <div class="grid">
-      ${DATA.systems.map((s) => `
-        <div class="card">
-          <div class="card-title">${s.name} ${badge(s.status)}</div>
-        </div>
-      `).join("")}
-    </div>
-
     <h2>Recent Log Entries</h2>
     ${DATA.log.slice(0, 3).map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
   `;

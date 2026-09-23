@@ -1,23 +1,12 @@
 /* Specter Prototype tracker — rendering logic. Edit data.js, not this file, to update content. */
 
-const STATUS_LABEL = {
-  "not-started": "Not Started",
-  "in-progress": "In Progress",
-  "blocked": "Blocked",
-  "complete": "Complete",
-};
-
-function badge(status) {
-  const label = STATUS_LABEL[status] || status;
-  return `<span class="badge badge-${status}">${label}</span>`;
-}
-
 /* ---------- Dashboard ---------- */
 
 function renderDashboard() {
   const openTasks = taskItems.filter((t) => !t.done).length;
   const doneTasks = taskItems.filter((t) => t.done).length;
   const benchOpen = benchItems.filter((b) => b.status !== "approved").length;
+  const shipmentsInbound = shipments.filter((s) => s.status !== "delivered").length;
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `
@@ -37,6 +26,10 @@ function renderDashboard() {
         <div class="card-title">Bench Decisions Needed</div>
         <div class="card-value">${benchOpen}</div>
       </div>
+      <div class="card card-link" data-nav="shipments">
+        <div class="card-title">Shipments Inbound</div>
+        <div class="card-value">${shipmentsInbound}</div>
+      </div>
       ${blockedSystems > 0 ? `
       <div class="card">
         <div class="card-title">Blocked Systems</div>
@@ -53,34 +46,6 @@ function renderDashboard() {
   });
 }
 
-/* ---------- Tooling & Machinery ---------- */
-
-function renderTooling() {
-  document.getElementById("tooling").innerHTML = `
-    <h1>Tooling &amp; Machinery</h1>
-    <p class="view-sub">Equipment and fixtures needed to build the car.</p>
-    ${DATA.tooling.map((t) => `
-      <div class="item">
-        <div class="item-head">
-          <div class="item-name">${t.name}</div>
-          ${badge(t.status)}
-        </div>
-        ${t.notes ? `<div class="item-notes">${t.notes}</div>` : ""}
-      </div>
-    `).join("")}
-
-    <h2>Process Development</h2>
-    ${DATA.processes.map((p) => `
-      <div class="item">
-        <div class="item-head">
-          <div class="item-name">${p.name}</div>
-          ${badge(p.status)}
-        </div>
-        ${p.notes ? `<div class="item-notes">${p.notes}</div>` : ""}
-      </div>
-    `).join("")}
-  `;
-}
 
 /* ---------- Tasks ---------- */
 /*
@@ -837,7 +802,9 @@ function wireBenchList() {
         "Bench item approved",
         `"${item.partName}" approved to order${chosen ? " — " + chosen.whatItIs : ""}.`
       );
+      createShipmentFromBenchApproval(item, chosen);
       renderBench();
+      renderShipments();
       renderDashboard();
       renderLog();
     });
@@ -892,6 +859,136 @@ function renderBench() {
   wireExpandables(el);
 }
 
+/* ---------- Shipments ---------- */
+/*
+ * Auto-created when a bench item is approved to order. Tracks each
+ * shipment from ordered -> in transit -> delivered.
+ */
+
+const SHIPMENT_STORAGE_KEY = "specter-shipments";
+let shipments = [];
+
+function loadShipments() {
+  try {
+    const raw = localStorage.getItem(SHIPMENT_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
+function saveShipments() {
+  try { localStorage.setItem(SHIPMENT_STORAGE_KEY, JSON.stringify(shipments)); } catch (e) {}
+}
+
+function createShipmentFromBenchApproval(item, chosenOption) {
+  shipments.unshift({
+    id: "ship" + Date.now(),
+    benchItemId: item.id,
+    partName: item.partName,
+    optionName: chosenOption ? chosenOption.whatItIs : "",
+    vendor: chosenOption ? chosenOption.vendor : "",
+    orderedDate: new Date().toISOString().slice(0, 10),
+    trackingNumber: "",
+    status: "ordered",
+    deliveredDate: null,
+  });
+  saveShipments();
+}
+
+function shipmentBadge(status) {
+  const map = {
+    "ordered": { cls: "not-started", label: "Ordered" },
+    "in-transit": { cls: "in-progress", label: "In Transit" },
+    "delivered": { cls: "complete", label: "Delivered" },
+  };
+  const m = map[status] || { cls: "not-started", label: status };
+  return `<span class="badge badge-${m.cls}">${m.label}</span>`;
+}
+
+function shipmentCardHtml(s) {
+  return `
+    <div class="bench-item-card">
+      <div class="bench-eyebrow">
+        <span>${escapeHtml(s.vendor || "Vendor unknown")}</span>
+        <span class="bench-eyebrow-sep">&middot;</span>
+        <span>Ordered ${escapeHtml(s.orderedDate)}</span>
+        <span class="bench-item-number">${shipmentBadge(s.status)}</span>
+      </div>
+
+      <div class="bench-title-row">
+        <h3 class="bench-item-title">${escapeHtml(s.partName)}</h3>
+      </div>
+      ${s.optionName ? `<div class="bench-item-meta">${escapeHtml(s.optionName)}</div>` : ""}
+
+      <label class="field-label" for="track-${s.id}">Tracking number (optional)</label>
+      <input type="text" id="track-${s.id}" class="ship-tracking-input" data-item="${s.id}" value="${escapeAttr(s.trackingNumber || "")}" placeholder="Add tracking number..." />
+
+      <div class="bench-item-actions">
+        ${s.status === "ordered" ? `<button type="button" class="bench-approve-btn ship-advance-btn" data-item="${s.id}" data-next="in-transit">Mark in transit</button>` : ""}
+        ${s.status === "in-transit" ? `<button type="button" class="bench-approve-btn ship-advance-btn" data-item="${s.id}" data-next="delivered">Mark delivered</button>` : ""}
+        ${s.status === "delivered" ? `<button type="button" class="bench-secondary-btn ship-reopen-btn" data-item="${s.id}">Reopen</button>` : ""}
+        <button type="button" class="bench-delete-item icon-trash-btn ship-delete-btn" data-item="${s.id}" aria-label="Delete shipment" title="Delete shipment">${trashIconHtml()}</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireShipmentsList() {
+  document.querySelectorAll("#shipments .ship-advance-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = shipments.find((x) => x.id === btn.dataset.item);
+      if (!s) return;
+      s.status = btn.dataset.next;
+      if (s.status === "delivered") s.deliveredDate = new Date().toISOString().slice(0, 10);
+      saveShipments();
+      renderShipments();
+      renderDashboard();
+    });
+  });
+
+  document.querySelectorAll("#shipments .ship-reopen-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = shipments.find((x) => x.id === btn.dataset.item);
+      if (!s) return;
+      s.status = "in-transit";
+      s.deliveredDate = null;
+      saveShipments();
+      renderShipments();
+      renderDashboard();
+    });
+  });
+
+  document.querySelectorAll("#shipments .ship-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!confirm("Delete this shipment record?")) return;
+      shipments = shipments.filter((x) => x.id !== btn.dataset.item);
+      saveShipments();
+      renderShipments();
+      renderDashboard();
+    });
+  });
+
+  document.querySelectorAll("#shipments .ship-tracking-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const s = shipments.find((x) => x.id === input.dataset.item);
+      if (!s) return;
+      s.trackingNumber = input.value.trim();
+      saveShipments();
+    });
+  });
+}
+
+function renderShipments() {
+  document.getElementById("shipments").innerHTML = `
+    <h1>Shipments</h1>
+    <p class="view-sub">Inbound shipments from approved bench orders.</p>
+    ${shipments.length
+      ? `<div class="bench-item-list">${shipments.map(shipmentCardHtml).join("")}</div>`
+      : `<p class="view-sub">Nothing inbound right now. Approving a bench item to order adds it here.</p>`}
+  `;
+  wireShipmentsList();
+}
+
 /* ---------- Tab navigation ---------- */
 
 function showView(id) {
@@ -922,10 +1019,11 @@ document.addEventListener("DOMContentLoaded", () => {
   benchItems = loadBenchItems();
   taskItems = loadTaskItems();
   activityLog = loadActivityLog();
+  shipments = loadShipments();
   renderDashboard();
-  renderTooling();
   renderTasks();
   renderBench();
+  renderShipments();
   renderLog();
   initNav();
 });

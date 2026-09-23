@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
   <title>Specter Development</title>
   <link rel="icon" href="logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,28 +14,40 @@
 <body>
   <img src="logo.png" alt="Specter" class="corner-logo" />
 
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-name">Specter</div>
-      <div class="brand-sub">Car No. 1 Prototype</div>
-    </div>
-    <nav class="tabs">
-      <button data-view="dashboard">Dashboard</button>
-      <button data-view="tasks">Tasks</button>
-      <button data-view="bench">Bench</button>
-      <button data-view="shipments">Shipments</button>
-      <button data-view="log">Build Log</button>
-    </nav>
-    <div class="updated" id="updated"></div>
-  </aside>
+  <div id="password-gate" class="password-gate">
+    <form id="gate-form" class="gate-card">
+      <h1>Specter Development</h1>
+      <p class="view-sub">Enter the password to continue.</p>
+      <input type="password" id="gate-password" placeholder="Password" autocomplete="current-password" required />
+      <button type="submit" class="bench-primary-btn">Enter</button>
+      <p class="gate-error" id="gate-error"></p>
+    </form>
+  </div>
 
-  <main>
-    <div class="view" id="dashboard"></div>
-    <div class="view" id="tasks"></div>
-    <div class="view" id="bench"></div>
-    <div class="view" id="shipments"></div>
-    <div class="view" id="log"></div>
-  </main>
+  <div id="app" style="display:none;">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-name">Specter</div>
+        <div class="brand-sub">Car No. 1 Prototype</div>
+      </div>
+      <nav class="tabs">
+        <button data-view="dashboard">Dashboard</button>
+        <button data-view="tasks">Tasks</button>
+        <button data-view="bench">Bench</button>
+        <button data-view="shipments">Shipments</button>
+        <button data-view="log">Build Log</button>
+      </nav>
+      <div class="updated" id="updated"></div>
+    </aside>
+
+    <main>
+      <div class="view" id="dashboard"></div>
+      <div class="view" id="tasks"></div>
+      <div class="view" id="bench"></div>
+      <div class="view" id="shipments"></div>
+      <div class="view" id="log"></div>
+    </main>
+  </div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>

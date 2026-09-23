@@ -1189,7 +1189,7 @@ function initNav() {
 
 /* ---------- Init ---------- */
 
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
   document.getElementById("updated").textContent = `Updated ${DATA.meta.updated}`;
   benchItems = loadBenchItems();
   taskItems = loadTaskItems();
@@ -1201,4 +1201,42 @@ document.addEventListener("DOMContentLoaded", () => {
   renderShipments();
   renderLog();
   initNav();
-});
+}
+
+/* ---------- Password gate ---------- */
+
+const GATE_STORAGE_KEY = "specter-unlocked";
+
+function unlockApp() {
+  document.getElementById("password-gate").style.display = "none";
+  document.getElementById("app").style.display = "";
+  initApp();
+}
+
+function checkGate() {
+  let unlocked = false;
+  try { unlocked = localStorage.getItem(GATE_STORAGE_KEY) === "true"; } catch (e) {}
+
+  if (unlocked) {
+    unlockApp();
+    return;
+  }
+
+  const form = document.getElementById("gate-form");
+  const input = document.getElementById("gate-password");
+  const error = document.getElementById("gate-error");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (input.value === DATA.meta.sharedPassword) {
+      try { localStorage.setItem(GATE_STORAGE_KEY, "true"); } catch (err) {}
+      unlockApp();
+    } else {
+      error.textContent = "Incorrect password.";
+      input.value = "";
+      input.focus();
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", checkGate);

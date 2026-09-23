@@ -130,6 +130,7 @@ const TASK_STORAGE_KEY = "specter-task-items";
 let taskItems = [];
 let taskFormOpen = false;
 let taskLinkCounter = 0;
+let taskEditingId = null;
 
 function loadTaskItems() {
   try {
@@ -143,48 +144,54 @@ function saveTaskItems() {
   try { localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(taskItems)); } catch (e) {}
 }
 
-function taskLinkRowHtml(rowId) {
+function taskLinkRowHtml(rowId, link) {
+  link = link || {};
   return `
     <div class="bench-link-row" data-row-id="${rowId}">
-      <input type="text" class="al-label" placeholder="Link name (optional)" />
-      <input type="url" class="al-url" placeholder="https://..." />
+      <input type="text" class="al-label" placeholder="Link name (optional)" value="${escapeAttr(link.label || "")}" />
+      <input type="url" class="al-url" placeholder="https://..." value="${escapeAttr(link.url || "")}" />
       <button type="button" class="bench-remove-option" data-remove-link="${rowId}">Remove</button>
     </div>
   `;
 }
 
 function taskFormHtml() {
+  const editing = taskEditingId ? taskItems.find((i) => i.id === taskEditingId) : null;
+  const linkRowsHtml = editing
+    ? editing.links.map((l, i) => taskLinkRowHtml("pl" + i, l)).join("")
+    : "";
+
   return `
     <div class="bench-form-panel">
-      <h2 class="bench-form-title">Add a task</h2>
+      <h2 class="bench-form-title">${editing ? "Edit task" : "Add a task"}</h2>
       <p class="view-sub">Something to check, measure or decide at the shop.</p>
 
       <form id="task-form">
         <label class="field-label" for="af-name">Your name</label>
-        <input type="text" id="af-name" required />
+        <input type="text" id="af-name" value="${editing ? escapeAttr(editing.submitter) : ""}" required />
 
         <label class="field-label" for="af-what">What needs doing</label>
-        <input type="text" id="af-what" placeholder="e.g. Confirm the rear door pattern" required />
+        <input type="text" id="af-what" placeholder="e.g. Confirm the rear door pattern" value="${editing ? escapeAttr(editing.whatNeedsDoing) : ""}" required />
 
         <label class="field-label" for="af-category">Category</label>
-        <input type="text" id="af-category" placeholder="e.g. Interior" />
+        <input type="text" id="af-category" placeholder="e.g. Interior" value="${editing ? escapeAttr(editing.category) : ""}" />
         <div class="bench-pills" id="task-category-pills">
-          ${BENCH_CATEGORIES.map((c) => `<button type="button" class="pill" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join("")}
+          ${BENCH_CATEGORIES.map((c) => `<button type="button" class="pill ${editing && editing.category === c ? "active" : ""}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join("")}
         </div>
 
         <label class="field-label" for="af-reason">What to check or decide, and why</label>
-        <textarea id="af-reason" rows="3" required></textarea>
+        <textarea id="af-reason" rows="3" required>${editing ? escapeHtml(editing.reason) : ""}</textarea>
 
         <label class="field-label" for="af-checkfirst">Check first (optional)</label>
-        <textarea id="af-checkfirst" rows="2"></textarea>
+        <textarea id="af-checkfirst" rows="2">${editing ? escapeHtml(editing.checkFirst) : ""}</textarea>
 
         <div class="bench-options-divider">Reference links (optional)</div>
-        <div id="task-links-container"></div>
+        <div id="task-links-container">${linkRowsHtml}</div>
         <button type="button" id="task-add-link" class="bench-secondary-btn bench-add-link-btn">+ Add a link</button>
 
         <div class="bench-form-actions">
           <button type="button" id="task-cancel" class="bench-secondary-btn">Cancel</button>
-          <button type="submit" class="bench-primary-btn">Add</button>
+          <button type="submit" class="bench-primary-btn">${editing ? "Save changes" : "Add"}</button>
         </div>
       </form>
     </div>
@@ -229,32 +236,52 @@ function wireTaskForm() {
       .filter((l) => l.url)
       .map((l) => ({ label: l.label || l.url, url: l.url }));
 
-    taskItems.unshift({
-      id: "task" + Date.now(),
-      createdAt: new Date().toISOString().slice(0, 10),
-      submitter: document.getElementById("af-name").value.trim(),
-      whatNeedsDoing: document.getElementById("af-what").value.trim(),
-      category: document.getElementById("af-category").value.trim(),
-      reason: document.getElementById("af-reason").value.trim(),
-      checkFirst: document.getElementById("af-checkfirst").value.trim(),
-      links,
-      done: false,
-      doneAt: null,
-    });
+    const submitter = document.getElementById("af-name").value.trim();
+    const whatNeedsDoing = document.getElementById("af-what").value.trim();
+    const category = document.getElementById("af-category").value.trim();
+    const reason = document.getElementById("af-reason").value.trim();
+    const checkFirst = document.getElementById("af-checkfirst").value.trim();
+
+    if (taskEditingId) {
+      const item = taskItems.find((i) => i.id === taskEditingId);
+      if (item) {
+        item.submitter = submitter;
+        item.whatNeedsDoing = whatNeedsDoing;
+        item.category = category;
+        item.reason = reason;
+        item.checkFirst = checkFirst;
+        item.links = links;
+      }
+    } else {
+      taskItems.unshift({
+        id: "task" + Date.now(),
+        createdAt: new Date().toISOString().slice(0, 10),
+        submitter,
+        whatNeedsDoing,
+        category,
+        reason,
+        checkFirst,
+        links,
+        done: false,
+        doneAt: null,
+      });
+    }
 
     saveTaskItems();
     closeTaskForm();
   });
 }
 
-function openTaskForm() {
+function openTaskForm(item) {
   taskFormOpen = true;
-  taskLinkCounter = 0;
+  taskEditingId = item ? item.id : null;
+  taskLinkCounter = item ? item.links.length : 0;
   renderTasks();
 }
 
 function closeTaskForm() {
   taskFormOpen = false;
+  taskEditingId = null;
   renderTasks();
 }
 
@@ -265,6 +292,7 @@ function taskItemCardHtml(item) {
         <div class="item-name">
           ${escapeHtml(item.whatNeedsDoing)}
           ${item.category ? `<span class="item-cat">${escapeHtml(item.category)}</span>` : ""}
+          ${editIconHtml(item.id)}
         </div>
         <span class="badge ${item.done ? "badge-complete" : "badge-in-progress"}">${item.done ? "Done" : "Open"}</span>
       </div>
@@ -287,6 +315,13 @@ function taskItemCardHtml(item) {
 }
 
 function wireTaskList() {
+  document.querySelectorAll("#tasks [data-edit-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = taskItems.find((i) => i.id === btn.dataset.editItem);
+      if (item) openTaskForm(item);
+    });
+  });
+
   document.querySelectorAll("#tasks .task-reopen-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = taskItems.find((i) => i.id === btn.dataset.item);
@@ -339,7 +374,7 @@ function renderTasks() {
   if (taskFormOpen) {
     wireTaskForm();
   } else {
-    document.getElementById("task-open").addEventListener("click", openTaskForm);
+    document.getElementById("task-open").addEventListener("click", () => openTaskForm(null));
   }
   wireTaskList();
 }

@@ -1,4 +1,4 @@
-# Specter Prototype Tracker
+# Specter Development
 
 A simple, single-page tracker for developing Car No. 1 and Specter's supporting
 tooling, processes, and tasks. No build step, no backend — just HTML, CSS, and

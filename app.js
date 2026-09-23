@@ -73,24 +73,6 @@ function renderDashboard() {
   `;
 }
 
-/* ---------- Car No. 1 ---------- */
-
-function renderCar() {
-  document.getElementById("car").innerHTML = `
-    <h1>${DATA.meta.carName}</h1>
-    <p class="view-sub">Vehicle systems and build progress.</p>
-    ${DATA.systems.map((s) => `
-      <div class="item">
-        <div class="item-head">
-          <div class="item-name">${s.name}<span class="item-cat">${s.category}</span></div>
-          ${badge(s.status)}
-        </div>
-        ${s.notes ? `<div class="item-notes">${s.notes}</div>` : ""}
-      </div>
-    `).join("")}
-  `;
-}
-
 /* ---------- Tooling & Machinery ---------- */
 
 function renderTooling() {
@@ -917,7 +899,6 @@ document.addEventListener("DOMContentLoaded", () => {
   benchItems = loadBenchItems();
   taskItems = loadTaskItems();
   renderDashboard();
-  renderCar();
   renderTooling();
   renderTasks();
   renderBench();

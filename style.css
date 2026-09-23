@@ -29,6 +29,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
+  font-family: "EB Garamond", Garamond, "Apple Garamond", "Times New Roman", serif;
   font-weight: 500;
   font-style: italic;
 }

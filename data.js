@@ -201,6 +201,11 @@ const DATA = {
     },
   ],
 
+  // Bench: quick-capture tasks added live from the Bench tab. This seed list
+  // only matters the first time the site loads in a browser — after that,
+  // the live list is stored in that browser's localStorage.
+  bench: [],
+
   // Build log / journal — most recent first
   log: [
     {

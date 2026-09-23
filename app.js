@@ -188,6 +188,80 @@ function renderLog() {
   `;
 }
 
+/* ---------- Bench ---------- */
+
+const BENCH_STORAGE_KEY = "specter-bench-tasks";
+let benchTasks = [];
+
+function loadBenchTasks() {
+  try {
+    const raw = localStorage.getItem(BENCH_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return DATA.bench.map((t) => ({ ...t }));
+}
+
+function saveBenchTasks() {
+  try { localStorage.setItem(BENCH_STORAGE_KEY, JSON.stringify(benchTasks)); } catch (e) {}
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function benchItemHtml(t) {
+  return `
+    <div class="bench-item ${t.done ? "done" : ""}" data-id="${t.id}">
+      <label class="bench-check">
+        <input type="checkbox" ${t.done ? "checked" : ""} />
+        <span>${escapeHtml(t.title)}</span>
+      </label>
+      <button type="button" class="bench-delete" aria-label="Delete task">&times;</button>
+    </div>
+  `;
+}
+
+function renderBench() {
+  document.getElementById("bench").innerHTML = `
+    <h1>Bench</h1>
+    <p class="view-sub">Quick-capture tasks — add anything that needs doing at the bench. Saved in this browser.</p>
+    <form class="bench-form" id="bench-form">
+      <input type="text" id="bench-input" placeholder="Add a task..." autocomplete="off" />
+      <button type="submit">Add</button>
+    </form>
+    <div class="bench-list">
+      ${benchTasks.length ? benchTasks.map(benchItemHtml).join("") : `<p class="view-sub">Nothing on the bench right now.</p>`}
+    </div>
+  `;
+
+  document.getElementById("bench-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("bench-input");
+    const title = input.value.trim();
+    if (!title) return;
+    benchTasks.unshift({ id: "b" + Date.now(), title, done: false });
+    saveBenchTasks();
+    renderBench();
+  });
+
+  document.querySelectorAll(".bench-item").forEach((el) => {
+    const id = el.dataset.id;
+    el.querySelector('input[type="checkbox"]').addEventListener("change", (e) => {
+      const task = benchTasks.find((t) => t.id === id);
+      if (task) task.done = e.target.checked;
+      saveBenchTasks();
+      renderBench();
+    });
+    el.querySelector(".bench-delete").addEventListener("click", () => {
+      benchTasks = benchTasks.filter((t) => t.id !== id);
+      saveBenchTasks();
+      renderBench();
+    });
+  });
+}
+
 /* ---------- Tab navigation ---------- */
 
 function showView(id) {
@@ -215,10 +289,12 @@ function initNav() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("updated").textContent = `Updated ${DATA.meta.updated}`;
+  benchTasks = loadBenchTasks();
   renderDashboard();
   renderCar();
   renderTooling();
   renderTasks();
+  renderBench();
   renderLog();
   initNav();
 });

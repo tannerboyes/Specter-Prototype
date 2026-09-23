@@ -66,6 +66,10 @@ html, body {
   margin: 0 0 4px;
 }
 
+.gate-card .view-sub {
+  margin-bottom: 0;
+}
+
 .gate-card input {
   display: block;
   width: 100%;
@@ -94,7 +98,10 @@ html, body {
   color: var(--red);
   font-size: 13px;
   margin: 12px 0 0;
-  min-height: 16px;
+}
+
+.gate-error:empty {
+  display: none;
 }
 
 .corner-logo {

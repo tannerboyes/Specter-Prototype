@@ -5,17 +5,11 @@ const STATUS_LABEL = {
   "in-progress": "In Progress",
   "blocked": "Blocked",
   "complete": "Complete",
-  "todo": "To Do",
-  "done": "Done",
 };
 
 function badge(status) {
   const label = STATUS_LABEL[status] || status;
   return `<span class="badge badge-${status}">${label}</span>`;
-}
-
-function priorityBadge(p) {
-  return `<span class="badge badge-${p}">${p}</span>`;
 }
 
 function avg(nums) {
@@ -28,8 +22,8 @@ function avg(nums) {
 function renderDashboard() {
   const overallProgress = avg(DATA.systems.map((s) => s.progress));
   const toolingProgress = avg(DATA.tooling.map((t) => t.progress));
-  const openTasks = DATA.tasks.filter((t) => t.status !== "done").length;
-  const doneTasks = DATA.tasks.filter((t) => t.status === "done").length;
+  const openTasks = taskItems.filter((t) => !t.done).length;
+  const doneTasks = taskItems.filter((t) => t.done).length;
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `
@@ -122,50 +116,227 @@ function renderTooling() {
 }
 
 /* ---------- Tasks ---------- */
+/*
+ * Things to check, measure or decide at the shop — nothing to buy (that's
+ * what Bench is for). No backend, so persisted per-browser in localStorage.
+ */
 
-let taskFilter = "all";
+const TASK_STORAGE_KEY = "specter-task-items";
+let taskItems = [];
+let taskFormOpen = false;
+let taskLinkCounter = 0;
 
-function renderTasks() {
-  const filtered = taskFilter === "all"
-    ? DATA.tasks
-    : DATA.tasks.filter((t) => t.status === taskFilter);
+function loadTaskItems() {
+  try {
+    const raw = localStorage.getItem(TASK_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
 
-  document.getElementById("tasks").innerHTML = `
-    <h1>Tasks</h1>
-    <p class="view-sub">Everything actionable across the car, tooling, and processes.</p>
-    <div class="task-filters">
-      ${["all", "todo", "in-progress", "done"].map((f) => `
-        <button data-filter="${f}" class="${taskFilter === f ? "active" : ""}">
-          ${f === "all" ? "All" : STATUS_LABEL[f]}
-        </button>
-      `).join("")}
+function saveTaskItems() {
+  try { localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(taskItems)); } catch (e) {}
+}
+
+function taskLinkRowHtml(rowId) {
+  return `
+    <div class="bench-link-row" data-row-id="${rowId}">
+      <input type="text" class="al-label" placeholder="Link name (optional)" />
+      <input type="url" class="al-url" placeholder="https://..." />
+      <button type="button" class="bench-remove-option" data-remove-link="${rowId}">Remove</button>
     </div>
-    <table class="tasks">
-      <thead>
-        <tr><th>Task</th><th>Area</th><th>Priority</th><th>Status</th></tr>
-      </thead>
-      <tbody>
-        ${filtered.map((t) => `
-          <tr>
-            <td>
-              ${t.title}
-              ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ""}
-            </td>
-            <td>${t.area}</td>
-            <td>${priorityBadge(t.priority)}</td>
-            <td>${badge(t.status)}</td>
-          </tr>
-        `).join("") || `<tr><td colspan="4" class="task-notes">No tasks in this view.</td></tr>`}
-      </tbody>
-    </table>
   `;
+}
 
-  document.querySelectorAll(".task-filters button").forEach((btn) => {
+function taskFormHtml() {
+  return `
+    <div class="bench-form-panel">
+      <h2 class="bench-form-title">Add a task</h2>
+      <p class="view-sub">Something to check, measure or decide at the shop.</p>
+
+      <form id="task-form">
+        <label class="field-label" for="af-name">Your name</label>
+        <input type="text" id="af-name" required />
+
+        <label class="field-label" for="af-what">What needs doing</label>
+        <input type="text" id="af-what" placeholder="e.g. Confirm the rear door pattern" required />
+
+        <label class="field-label" for="af-category">Category</label>
+        <input type="text" id="af-category" placeholder="e.g. Interior" />
+        <div class="bench-pills" id="task-category-pills">
+          ${BENCH_CATEGORIES.map((c) => `<button type="button" class="pill" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join("")}
+        </div>
+
+        <label class="field-label" for="af-reason">What to check or decide, and why</label>
+        <textarea id="af-reason" rows="3" required></textarea>
+
+        <label class="field-label" for="af-checkfirst">Check first (optional)</label>
+        <textarea id="af-checkfirst" rows="2"></textarea>
+
+        <div class="bench-options-divider">Reference links (optional)</div>
+        <div id="task-links-container"></div>
+        <button type="button" id="task-add-link" class="bench-secondary-btn bench-add-link-btn">+ Add a link</button>
+
+        <div class="bench-form-actions">
+          <button type="button" id="task-cancel" class="bench-secondary-btn">Cancel</button>
+          <button type="submit" class="bench-primary-btn">Add</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function wireTaskForm() {
+  const pills = document.getElementById("task-category-pills");
+  const categoryInput = document.getElementById("af-category");
+  pills.addEventListener("click", (e) => {
+    const btn = e.target.closest(".pill");
+    if (!btn) return;
+    categoryInput.value = btn.dataset.cat;
+    pills.querySelectorAll(".pill").forEach((p) => p.classList.toggle("active", p === btn));
+  });
+
+  const linksContainer = document.getElementById("task-links-container");
+
+  document.getElementById("task-add-link").addEventListener("click", () => {
+    taskLinkCounter += 1;
+    linksContainer.insertAdjacentHTML("beforeend", taskLinkRowHtml("l" + taskLinkCounter));
+  });
+
+  linksContainer.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-remove-link]");
+    if (!btn) return;
+    document.querySelector(`.bench-link-row[data-row-id="${btn.dataset.removeLink}"]`).remove();
+  });
+
+  document.getElementById("task-cancel").addEventListener("click", () => {
+    closeTaskForm();
+  });
+
+  document.getElementById("task-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const links = Array.from(linksContainer.querySelectorAll(".bench-link-row"))
+      .map((row) => ({
+        label: row.querySelector(".al-label").value.trim(),
+        url: row.querySelector(".al-url").value.trim(),
+      }))
+      .filter((l) => l.url)
+      .map((l) => ({ label: l.label || l.url, url: l.url }));
+
+    taskItems.unshift({
+      id: "task" + Date.now(),
+      createdAt: new Date().toISOString().slice(0, 10),
+      submitter: document.getElementById("af-name").value.trim(),
+      whatNeedsDoing: document.getElementById("af-what").value.trim(),
+      category: document.getElementById("af-category").value.trim(),
+      reason: document.getElementById("af-reason").value.trim(),
+      checkFirst: document.getElementById("af-checkfirst").value.trim(),
+      links,
+      done: false,
+      doneAt: null,
+    });
+
+    saveTaskItems();
+    closeTaskForm();
+  });
+}
+
+function openTaskForm() {
+  taskFormOpen = true;
+  taskLinkCounter = 0;
+  renderTasks();
+}
+
+function closeTaskForm() {
+  taskFormOpen = false;
+  renderTasks();
+}
+
+function taskItemCardHtml(item) {
+  return `
+    <div class="bench-item-card">
+      <div class="item-head">
+        <div class="item-name">
+          ${escapeHtml(item.whatNeedsDoing)}
+          ${item.category ? `<span class="item-cat">${escapeHtml(item.category)}</span>` : ""}
+        </div>
+        <span class="badge ${item.done ? "badge-complete" : "badge-in-progress"}">${item.done ? "Done" : "Open"}</span>
+      </div>
+      <div class="bench-item-meta">Added by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}</div>
+      <div class="item-notes">${escapeHtml(item.reason)}</div>
+      ${item.checkFirst ? `<p class="bench-before"><strong>Check first:</strong> ${escapeHtml(item.checkFirst)}</p>` : ""}
+      ${item.links.length ? `
+        <div class="bench-more-links">
+          ${item.links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}
+        </div>` : ""}
+
+      <div class="bench-item-actions">
+        ${item.done
+          ? `<button type="button" class="bench-secondary-btn task-reopen-btn" data-item="${item.id}">Reopen</button>`
+          : `<button type="button" class="bench-approve-btn" data-item="${item.id}">Mark done</button>`}
+        <button type="button" class="bench-delete-item" data-item="${item.id}">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireTaskList() {
+  document.querySelectorAll(".task-reopen-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      taskFilter = btn.dataset.filter;
+      const item = taskItems.find((i) => i.id === btn.dataset.item);
+      if (!item) return;
+      item.done = false;
+      item.doneAt = null;
+      saveTaskItems();
       renderTasks();
     });
   });
+
+  document.querySelectorAll(".bench-approve-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = taskItems.find((i) => i.id === btn.dataset.item);
+      if (!item) return;
+      item.done = true;
+      item.doneAt = new Date().toISOString().slice(0, 10);
+      saveTaskItems();
+      renderTasks();
+    });
+  });
+
+  document.querySelectorAll(".bench-delete-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!confirm("Delete this task?")) return;
+      taskItems = taskItems.filter((i) => i.id !== btn.dataset.item);
+      saveTaskItems();
+      renderTasks();
+    });
+  });
+}
+
+function renderTasks() {
+  const el = document.getElementById("tasks");
+
+  const header = taskFormOpen
+    ? taskFormHtml()
+    : `
+      <h1>Tasks</h1>
+      <p class="view-sub">Things to check, measure or decide at the shop — nothing to buy.</p>
+      <button type="button" id="task-open" class="bench-primary-btn">+ Add task</button>
+    `;
+
+  const list = taskItems.length
+    ? `<div class="bench-item-list">${taskItems.map(taskItemCardHtml).join("")}</div>`
+    : `<p class="view-sub">Nothing on the list right now.</p>`;
+
+  el.innerHTML = `${header}<div class="bench-list-wrap">${list}</div>`;
+
+  if (taskFormOpen) {
+    wireTaskForm();
+  } else {
+    document.getElementById("task-open").addEventListener("click", openTaskForm);
+  }
+  wireTaskList();
 }
 
 /* ---------- Build Log ---------- */
@@ -574,6 +745,7 @@ function initNav() {
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("updated").textContent = `Updated ${DATA.meta.updated}`;
   benchItems = loadBenchItems();
+  taskItems = loadTaskItems();
   renderDashboard();
   renderCar();
   renderTooling();

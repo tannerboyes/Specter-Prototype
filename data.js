@@ -152,55 +152,6 @@ const DATA = {
     },
   ],
 
-  // Actionable tasks
-  tasks: [
-    {
-      id: "t1",
-      title: "Finalize chassis material spec",
-      area: "Chassis & Frame",
-      priority: "high",
-      status: "in-progress",
-      due: "",
-      notes: "",
-    },
-    {
-      id: "t2",
-      title: "Design chassis build jig",
-      area: "Tooling",
-      priority: "high",
-      status: "todo",
-      due: "",
-      notes: "Blocks frame fabrication.",
-    },
-    {
-      id: "t3",
-      title: "Source powertrain options",
-      area: "Powertrain",
-      priority: "medium",
-      status: "todo",
-      due: "",
-      notes: "",
-    },
-    {
-      id: "t4",
-      title: "Write welding SOP draft",
-      area: "Process",
-      priority: "medium",
-      status: "in-progress",
-      due: "",
-      notes: "",
-    },
-    {
-      id: "t5",
-      title: "Set up this tracker site",
-      area: "Documentation",
-      priority: "low",
-      status: "done",
-      due: "",
-      notes: "",
-    },
-  ],
-
   // Build log / journal — most recent first
   log: [
     {

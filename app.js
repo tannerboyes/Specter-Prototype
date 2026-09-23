@@ -25,15 +25,15 @@ function renderDashboard() {
     <p class="view-sub">${DATA.meta.tagline}</p>
 
     <div class="grid">
-      <div class="card">
+      <div class="card card-link" data-nav="tasks">
         <div class="card-title">Open Tasks</div>
         <div class="card-value">${openTasks}</div>
       </div>
-      <div class="card">
+      <div class="card card-link" data-nav="tasks">
         <div class="card-title">Completed Tasks</div>
         <div class="card-value">${doneTasks}</div>
       </div>
-      <div class="card">
+      <div class="card card-link" data-nav="bench">
         <div class="card-title">Bench Decisions Needed</div>
         <div class="card-value">${benchOpen}</div>
       </div>
@@ -47,6 +47,10 @@ function renderDashboard() {
     <h2>Recent Log Entries</h2>
     ${allLogEntries().slice(0, 3).map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
   `;
+
+  document.querySelectorAll("#dashboard .card-link").forEach((card) => {
+    card.addEventListener("click", () => showView(card.dataset.nav));
+  });
 }
 
 /* ---------- Tooling & Machinery ---------- */

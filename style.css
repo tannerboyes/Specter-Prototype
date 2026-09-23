@@ -185,6 +185,14 @@ h2 {
   padding: 14px 16px;
 }
 
+.card-link {
+  cursor: pointer;
+}
+
+.card-link:hover {
+  border-color: var(--btn-bg);
+}
+
 .card-title {
   font-size: 13px;
   color: var(--text-dim);

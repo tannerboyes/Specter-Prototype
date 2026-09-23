@@ -377,6 +377,56 @@ const BENCH_CATEGORIES = [
 let benchItems = [];
 let benchFormOpen = false;
 let benchOptionCounter = 0;
+let benchEditingId = null;
+
+const BENCH_COUNTER_KEY = "specter-bench-counter";
+
+function nextBenchNumber() {
+  let n = 1;
+  try {
+    const raw = localStorage.getItem(BENCH_COUNTER_KEY);
+    n = raw ? parseInt(raw, 10) + 1 : 1;
+  } catch (e) {}
+  try { localStorage.setItem(BENCH_COUNTER_KEY, String(n)); } catch (e) {}
+  return n;
+}
+
+function extractDomainLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toUpperCase();
+  } catch (e) {
+    return url;
+  }
+}
+
+function editIconHtml(itemId) {
+  return `<button type="button" class="edit-icon" data-edit-item="${itemId}" aria-label="Edit">&#9998;</button>`;
+}
+
+function expandableHtml(text) {
+  if (!text) return "";
+  return `
+    <div class="expandable">
+      <p class="expandable-text">${escapeHtml(text)}</p>
+      <button type="button" class="more-toggle">More <span class="chevron">&#9662;</span></button>
+    </div>
+  `;
+}
+
+function wireExpandables(root) {
+  root.querySelectorAll(".expandable").forEach((box) => {
+    const textEl = box.querySelector(".expandable-text");
+    const btn = box.querySelector(".more-toggle");
+    if (textEl.scrollHeight <= textEl.clientHeight + 2) {
+      btn.style.display = "none";
+      return;
+    }
+    btn.addEventListener("click", () => {
+      const expanded = box.classList.toggle("expanded");
+      btn.innerHTML = expanded ? `Less <span class="chevron up">&#9662;</span>` : `More <span class="chevron">&#9662;</span>`;
+    });
+  });
+}
 
 function loadBenchItems() {
   try {
@@ -418,7 +468,8 @@ function parseMoreLinks(text) {
 
 /* ---- Add-item form ---- */
 
-function benchOptionBlockHtml(blockId, number) {
+function benchOptionBlockHtml(blockId, number, opt) {
+  opt = opt || {};
   return `
     <div class="bench-option-block" data-block-id="${blockId}">
       <div class="bench-option-head">
@@ -427,35 +478,35 @@ function benchOptionBlockHtml(blockId, number) {
       </div>
 
       <label class="field-label" for="${blockId}-what">What it is</label>
-      <input type="text" id="${blockId}-what" class="bo-what" placeholder="e.g. Genuine upper shroud LR048112" required />
+      <input type="text" id="${blockId}-what" class="bo-what" placeholder="e.g. Genuine upper shroud LR048112" value="${escapeAttr(opt.whatItIs || "")}" required />
 
       <div class="bench-option-row">
         <div>
           <label class="field-label" for="${blockId}-vendor">Vendor</label>
-          <input type="text" id="${blockId}-vendor" class="bo-vendor" />
+          <input type="text" id="${blockId}-vendor" class="bo-vendor" value="${escapeAttr(opt.vendor || "")}" />
         </div>
         <div>
           <label class="field-label" for="${blockId}-partnum">Part number</label>
-          <input type="text" id="${blockId}-partnum" class="bo-partnum" />
+          <input type="text" id="${blockId}-partnum" class="bo-partnum" value="${escapeAttr(opt.partNumber || "")}" />
         </div>
       </div>
 
       <label class="field-label" for="${blockId}-link">Link</label>
-      <input type="url" id="${blockId}-link" class="bo-link" placeholder="https://..." />
+      <input type="url" id="${blockId}-link" class="bo-link" placeholder="https://..." value="${escapeAttr(opt.link || "")}" />
 
       <label class="field-label" for="${blockId}-picture">Picture (optional)</label>
-      <input type="url" id="${blockId}-picture" class="bo-picture" placeholder="https://....jpg" />
+      <input type="url" id="${blockId}-picture" class="bo-picture" placeholder="https://....jpg" value="${escapeAttr(opt.picture || "")}" />
       <p class="field-hint">Press and hold the product photo on that page and choose Copy (on a computer, right-click &rarr; Copy image address), then paste it here. It shows as a thumbnail linked to the page.</p>
 
       <label class="field-label" for="${blockId}-notes">Notes</label>
-      <textarea id="${blockId}-notes" class="bo-notes" rows="2"></textarea>
+      <textarea id="${blockId}-notes" class="bo-notes" rows="2">${escapeHtml(opt.notes || "")}</textarea>
 
       <label class="field-label" for="${blockId}-morelinks">More links (optional)</label>
-      <textarea id="${blockId}-morelinks" class="bo-morelinks" rows="2" placeholder="https://..."></textarea>
+      <textarea id="${blockId}-morelinks" class="bo-morelinks" rows="2" placeholder="https://...">${escapeHtml(opt.moreLinks || "")}</textarea>
       <p class="field-hint">One per line. To name a link, put the name first: Lower shroud | https://...</p>
 
       <label class="bench-recommend">
-        <input type="radio" name="bench-recommended" value="${blockId}" />
+        <input type="radio" name="bench-recommended" value="${blockId}" ${opt.recommended ? "checked" : ""} />
         Recommended option
       </label>
     </div>
@@ -463,41 +514,44 @@ function benchOptionBlockHtml(blockId, number) {
 }
 
 function benchFormHtml() {
-  const firstBlockId = "o0";
+  const editing = benchEditingId ? benchItems.find((i) => i.id === benchEditingId) : null;
+  const opts = editing && editing.options.length ? editing.options : [null];
+  const optionBlocksHtml = opts.map((opt, i) => benchOptionBlockHtml(opt ? opt.id : "o0", i + 1, opt)).join("");
+
   return `
     <div class="bench-form-panel">
-      <h2 class="bench-form-title">Add an item to the bench</h2>
+      <h2 class="bench-form-title">${editing ? "Edit bench item" : "Add an item to the bench"}</h2>
       <p class="view-sub">A part that needs a decision. Give each option a link and a picture; the shop approves an option to order.</p>
 
       <form id="bench-form">
         <label class="field-label" for="bf-name">Your name</label>
-        <input type="text" id="bf-name" required />
+        <input type="text" id="bf-name" value="${editing ? escapeAttr(editing.submitter) : ""}" required />
 
         <label class="field-label" for="bf-part">What the part is</label>
-        <input type="text" id="bf-part" placeholder="e.g. Rear wiper for the rear door" required />
+        <input type="text" id="bf-part" placeholder="e.g. Rear wiper for the rear door" value="${editing ? escapeAttr(editing.partName) : ""}" required />
 
         <label class="field-label" for="bf-category">Category</label>
-        <input type="text" id="bf-category" placeholder="e.g. Interior" />
+        <input type="text" id="bf-category" placeholder="e.g. Interior" value="${editing ? escapeAttr(editing.category) : ""}" />
         <div class="bench-pills" id="bench-category-pills">
-          ${BENCH_CATEGORIES.map((c) => `<button type="button" class="pill" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join("")}
+          ${BENCH_CATEGORIES.map((c) => `<button type="button" class="pill ${editing && editing.category === c ? "active" : ""}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join("")}
         </div>
 
         <label class="field-label" for="bf-reason">What needs deciding and why</label>
-        <textarea id="bf-reason" rows="3" required></textarea>
+        <textarea id="bf-reason" rows="3" required>${editing ? escapeHtml(editing.reason) : ""}</textarea>
 
         <label class="field-label" for="bf-before">Before ordering (optional)</label>
-        <textarea id="bf-before" rows="2"></textarea>
+        <textarea id="bf-before" rows="2">${editing ? escapeHtml(editing.beforeOrdering) : ""}</textarea>
         <p class="field-hint">Anything the shop must measure or confirm before this is ordered.</p>
 
         <div class="bench-options-divider">Options</div>
         <div id="bench-options-container">
-          ${benchOptionBlockHtml(firstBlockId, 1)}
+          ${optionBlocksHtml}
         </div>
         <button type="button" id="bench-add-option" class="bench-secondary-btn">+ Add another option</button>
 
         <div class="bench-form-actions">
           <button type="button" id="bench-cancel" class="bench-secondary-btn">Cancel</button>
-          <button type="submit" class="bench-primary-btn">Submit to the bench</button>
+          <button type="submit" class="bench-primary-btn">${editing ? "Save changes" : "Submit to the bench"}</button>
         </div>
       </form>
     </div>
@@ -566,32 +620,65 @@ function wireBenchForm() {
       };
     });
 
-    benchItems.unshift({
-      id: "bench" + Date.now(),
-      createdAt: new Date().toISOString().slice(0, 10),
-      submitter: document.getElementById("bf-name").value.trim(),
-      partName: document.getElementById("bf-part").value.trim(),
-      category: document.getElementById("bf-category").value.trim(),
-      reason: document.getElementById("bf-reason").value.trim(),
-      beforeOrdering: document.getElementById("bf-before").value.trim(),
-      options,
-      status: "needs-decision",
-      approvedOptionId: null,
-    });
+    const submitter = document.getElementById("bf-name").value.trim();
+    const partName = document.getElementById("bf-part").value.trim();
+    const category = document.getElementById("bf-category").value.trim();
+    const reason = document.getElementById("bf-reason").value.trim();
+    const beforeOrdering = document.getElementById("bf-before").value.trim();
+
+    if (benchEditingId) {
+      const item = benchItems.find((i) => i.id === benchEditingId);
+      if (item) {
+        item.submitter = submitter;
+        item.partName = partName;
+        item.category = category;
+        item.reason = reason;
+        item.beforeOrdering = beforeOrdering;
+        item.options = options;
+        if (item.approvedOptionId && !options.some((o) => o.id === item.approvedOptionId)) {
+          item.approvedOptionId = null;
+          item.status = "needs-decision";
+        }
+      }
+    } else {
+      benchItems.unshift({
+        id: "bench" + Date.now(),
+        number: nextBenchNumber(),
+        createdAt: new Date().toISOString().slice(0, 10),
+        submitter,
+        partName,
+        category,
+        reason,
+        beforeOrdering,
+        options,
+        status: "needs-decision",
+        approvedOptionId: null,
+      });
+    }
 
     saveBenchItems();
     closeBenchForm();
   });
 }
 
-function openBenchForm() {
+function openBenchForm(item) {
   benchFormOpen = true;
-  benchOptionCounter = 0;
+  benchEditingId = item ? item.id : null;
+  if (item && item.options.length) {
+    const nums = item.options.map((o) => {
+      const m = /^o(\d+)$/.exec(o.id);
+      return m ? parseInt(m[1], 10) : -1;
+    });
+    benchOptionCounter = Math.max(0, ...nums) + 1;
+  } else {
+    benchOptionCounter = 0;
+  }
   renderBench();
 }
 
 function closeBenchForm() {
   benchFormOpen = false;
+  benchEditingId = null;
   renderBench();
 }
 
@@ -602,50 +689,61 @@ function benchOptionCardHtml(item, opt) {
   const links = parseMoreLinks(opt.moreLinks);
   return `
     <div class="bench-option-card ${isApproved ? "approved" : ""}">
+      ${opt.recommended ? `<span class="option-recommended-tag">Recommended</span>` : ""}
       <div class="bench-option-card-head">
-        <div>
-          <div class="bench-option-what">
-            ${escapeHtml(opt.whatItIs || "Untitled option")}
-            ${opt.recommended ? `<span class="badge badge-recommended">Recommended</span>` : ""}
-            ${isApproved ? `<span class="badge badge-complete">Approved</span>` : ""}
-          </div>
-          ${(opt.vendor || opt.partNumber) ? `<div class="bench-option-meta">${[opt.vendor, opt.partNumber].filter(Boolean).join(" &middot; ")}</div>` : ""}
-        </div>
         ${opt.picture ? `
           <a href="${escapeAttr(opt.link || opt.picture)}" target="_blank" rel="noopener noreferrer" class="bench-thumb-link">
             <img src="${escapeAttr(opt.picture)}" alt="${escapeAttr(opt.whatItIs || "part photo")}" class="bench-thumb" />
           </a>` : ""}
+        <div class="bench-option-head-text">
+          <div class="bench-option-title-row">
+            <div class="bench-option-what">${escapeHtml(opt.whatItIs || "Untitled option")}</div>
+            ${editIconHtml(item.id)}
+          </div>
+          ${(opt.vendor || opt.partNumber) ? `<div class="bench-option-meta">${[opt.vendor, opt.partNumber].filter(Boolean).map(escapeHtml).join(" &middot; ")}</div>` : ""}
+        </div>
       </div>
 
-      ${opt.link ? `<a href="${escapeAttr(opt.link)}" target="_blank" rel="noopener noreferrer" class="bench-option-link">${escapeHtml(opt.link)}</a>` : ""}
-      ${opt.notes ? `<div class="item-notes">${escapeHtml(opt.notes)}</div>` : ""}
-      ${links.length ? `
-        <div class="bench-more-links">
-          ${links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}
-        </div>` : ""}
+      ${expandableHtml(opt.notes)}
 
-      ${item.status !== "approved" ? `
-        <button type="button" class="bench-approve-btn" data-item="${item.id}" data-option="${opt.id}">Approve this option</button>
-      ` : ""}
+      <div class="bench-option-footer">
+        ${opt.link ? `<a href="${escapeAttr(opt.link)}" target="_blank" rel="noopener noreferrer" class="bench-link-btn">${escapeHtml(extractDomainLabel(opt.link))} &#8599;</a>` : ""}
+        ${links.length ? `
+          <div class="bench-more-links">
+            ${links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}
+          </div>` : ""}
+      </div>
+
+      ${isApproved
+        ? `<span class="bench-approved-tag">&#10003; Approved to order</span>`
+        : (item.status !== "approved" ? `<button type="button" class="bench-approve-btn" data-item="${item.id}" data-option="${opt.id}">&#10003; Approve to order</button>` : "")}
     </div>
   `;
 }
 
 function benchItemCardHtml(item) {
+  const statusLabel = item.status === "approved" ? "APPROVED" : "OPEN &mdash; DECISION NEEDED";
   return `
     <div class="bench-item-card">
-      <div class="item-head">
-        <div class="item-name">
-          ${escapeHtml(item.partName)}
-          ${item.category ? `<span class="item-cat">${escapeHtml(item.category)}</span>` : ""}
-        </div>
-        <span class="badge ${item.status === "approved" ? "badge-complete" : "badge-in-progress"}">
-          ${item.status === "approved" ? "Approved" : "Needs Decision"}
-        </span>
+      <div class="bench-eyebrow">
+        <span>${escapeHtml((item.category || "Uncategorized").toUpperCase())}</span>
+        <span class="bench-eyebrow-sep">&middot;</span>
+        <span class="bench-eyebrow-status ${item.status === "approved" ? "is-approved" : "is-open"}">${statusLabel}</span>
+        <span class="bench-item-number">${String(item.number || 0).padStart(2, "0")}</span>
       </div>
+
+      <div class="bench-title-row">
+        <h3 class="bench-item-title">${escapeHtml(item.partName)}</h3>
+        ${editIconHtml(item.id)}
+      </div>
+
       <div class="bench-item-meta">Submitted by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}</div>
-      <div class="item-notes">${escapeHtml(item.reason)}</div>
-      ${item.beforeOrdering ? `<p class="bench-before"><strong>Before ordering:</strong> ${escapeHtml(item.beforeOrdering)}</p>` : ""}
+
+      ${expandableHtml(item.reason)}
+
+      ${item.beforeOrdering ? `
+        <p class="bench-before"><strong>Before ordering:</strong> ${escapeHtml(item.beforeOrdering)} ${editIconHtml(item.id)}</p>
+      ` : ""}
 
       <div class="bench-options-list">
         ${item.options.map((opt) => benchOptionCardHtml(item, opt)).join("")}
@@ -660,6 +758,13 @@ function benchItemCardHtml(item) {
 }
 
 function wireBenchList() {
+  document.querySelectorAll("#bench [data-edit-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = benchItems.find((i) => i.id === btn.dataset.editItem);
+      if (item) openBenchForm(item);
+    });
+  });
+
   document.querySelectorAll(".bench-approve-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = benchItems.find((i) => i.id === btn.dataset.item);
@@ -712,9 +817,10 @@ function renderBench() {
   if (benchFormOpen) {
     wireBenchForm();
   } else {
-    document.getElementById("bench-open").addEventListener("click", openBenchForm);
+    document.getElementById("bench-open").addEventListener("click", () => openBenchForm(null));
   }
   wireBenchList();
+  wireExpandables(el);
 }
 
 /* ---------- Tab navigation ---------- */

@@ -414,10 +414,100 @@ h2 {
   padding: 16px 18px;
 }
 
+.bench-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.bench-eyebrow-sep {
+  color: var(--border);
+}
+
+.bench-eyebrow-status.is-open {
+  color: var(--accent);
+}
+
+.bench-eyebrow-status.is-approved {
+  color: var(--green);
+}
+
+.bench-item-number {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.bench-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bench-item-title {
+  font-size: 17px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.edit-icon {
+  all: unset;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 14px;
+  flex-shrink: 0;
+  padding: 2px 5px;
+  border-radius: 6px;
+}
+
+.edit-icon:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.expandable-text {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 8px 0 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.expandable.expanded .expandable-text {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.more-toggle {
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chevron.up {
+  transform: rotate(180deg);
+}
+
 .bench-item-meta {
   font-size: 12px;
   color: var(--text-dim);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .bench-before {
@@ -441,6 +531,7 @@ h2 {
 }
 
 .bench-option-card {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
@@ -451,20 +542,39 @@ h2 {
   border-color: var(--green);
 }
 
+.option-recommended-tag {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--yellow);
+}
+
 .bench-option-card-head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
+  padding-right: 70px;
+}
+
+.bench-option-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bench-option-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .bench-option-what {
   font-weight: 600;
   font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .bench-option-meta {
@@ -478,27 +588,46 @@ h2 {
 }
 
 .bench-thumb {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--border);
   display: block;
 }
 
-.bench-option-link {
-  display: inline-block;
-  font-size: 12px;
+.bench-option-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bench-link-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border);
+  padding: 7px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  width: fit-content;
+}
+
+.bench-link-btn:hover {
+  border-color: var(--accent);
   color: var(--accent);
-  margin-top: 6px;
-  word-break: break-all;
 }
 
 .bench-more-links {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 6px;
 }
 
 .bench-more-links a {
@@ -516,15 +645,23 @@ h2 {
   border: 1px solid var(--green);
   padding: 6px 12px;
   border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .bench-approve-btn:hover {
   background: var(--green-bg);
 }
 
-.badge-recommended {
-  background: var(--yellow-bg);
-  color: var(--yellow);
+.bench-approved-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
 }
 
 .bench-item-actions {
@@ -548,7 +685,8 @@ h2 {
 
 @media (max-width: 520px) {
   .bench-option-row { grid-template-columns: 1fr; }
-  .bench-option-card-head { flex-direction: column; }
+  .bench-option-card-head { flex-direction: column; padding-right: 0; }
+  .option-recommended-tag { position: static; display: block; margin-bottom: 6px; }
 }
 
 /* ---------- Badges ---------- */

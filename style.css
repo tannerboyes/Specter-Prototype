@@ -89,6 +89,7 @@ html, body {
 }
 
 .gate-card .bench-primary-btn {
+  box-sizing: border-box;
   display: block;
   width: 100%;
   text-align: center;

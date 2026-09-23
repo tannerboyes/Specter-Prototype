@@ -1,11 +1,11 @@
 :root {
-  --bg: #f6f4ef;
+  --bg: #f7f2d9;
   --panel: #ffffff;
   --border: #ddd7c8;
   --text: #16140f;
   --text-dim: #6b6459;
   --accent: #2f5fce;
-  --accent-dim: #e2e9f9;
+  --accent-dim: #e2f0e6;
   --green: #1f8a4c;
   --green-bg: #e1f5e8;
   --yellow: #9a6b0a;
@@ -342,7 +342,7 @@ h2 {
 
 .pill.active {
   background: var(--accent-dim);
-  color: var(--accent);
+  color: var(--btn-bg);
   border-color: var(--accent-dim);
 }
 
@@ -513,7 +513,7 @@ h2 {
 }
 
 .edit-icon:hover {
-  color: var(--accent);
+  color: var(--btn-bg);
   background: var(--accent-dim);
 }
 
@@ -781,7 +781,7 @@ h2 {
 }
 
 .badge-not-started { background: var(--bg); color: var(--gray); }
-.badge-in-progress { background: var(--accent-dim); color: var(--accent); }
+.badge-in-progress { background: var(--accent-dim); color: var(--btn-bg); }
 .badge-blocked { background: var(--red-bg); color: var(--red); }
 .badge-complete { background: var(--green-bg); color: var(--green); }
 

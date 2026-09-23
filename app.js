@@ -692,8 +692,9 @@ function benchOptionCardHtml(item, opt) {
       ${opt.recommended ? `<span class="option-recommended-tag">Recommended</span>` : ""}
       <div class="bench-option-card-head">
         ${opt.picture ? `
-          <a href="${escapeAttr(opt.link || opt.picture)}" target="_blank" rel="noopener noreferrer" class="bench-thumb-link">
-            <img src="${escapeAttr(opt.picture)}" alt="${escapeAttr(opt.whatItIs || "part photo")}" class="bench-thumb" />
+          <a href="${escapeAttr(opt.link || opt.picture)}" target="_blank" rel="noopener noreferrer" class="bench-thumb-link" aria-label="View photo">
+            <span class="bench-thumb-fallback">&#8599;</span>
+            <img src="${escapeAttr(opt.picture)}" alt="${escapeAttr(opt.whatItIs || "part photo")}" class="bench-thumb" onerror="this.style.display='none'" />
           </a>` : ""}
         <div class="bench-option-head-text">
           <div class="bench-option-title-row">

@@ -12,16 +12,9 @@ function badge(status) {
   return `<span class="badge badge-${status}">${label}</span>`;
 }
 
-function avg(nums) {
-  if (!nums.length) return 0;
-  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
-}
-
 /* ---------- Dashboard ---------- */
 
 function renderDashboard() {
-  const overallProgress = avg(DATA.systems.map((s) => s.progress));
-  const toolingProgress = avg(DATA.tooling.map((t) => t.progress));
   const openTasks = taskItems.filter((t) => !t.done).length;
   const doneTasks = taskItems.filter((t) => t.done).length;
   const benchOpen = benchItems.filter((b) => b.status !== "approved").length;
@@ -32,14 +25,6 @@ function renderDashboard() {
     <p class="view-sub">${DATA.meta.tagline}</p>
 
     <div class="grid">
-      <div class="card">
-        <div class="card-title">Overall Car Progress</div>
-        <div class="card-value">${overallProgress}%</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Tooling & Machinery Readiness</div>
-        <div class="card-value">${toolingProgress}%</div>
-      </div>
       <div class="card">
         <div class="card-title">Open Tasks</div>
         <div class="card-value">${openTasks}</div>

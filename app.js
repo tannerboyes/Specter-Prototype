@@ -18,10 +18,6 @@ function priorityBadge(p) {
   return `<span class="badge badge-${p}">${p}</span>`;
 }
 
-function progressBar(pct) {
-  return `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
-}
-
 function avg(nums) {
   if (!nums.length) return 0;
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
@@ -44,12 +40,10 @@ function renderDashboard() {
       <div class="card">
         <div class="card-title">Overall Car Progress</div>
         <div class="card-value">${overallProgress}%</div>
-        ${progressBar(overallProgress)}
       </div>
       <div class="card">
         <div class="card-title">Tooling & Machinery Readiness</div>
         <div class="card-value">${toolingProgress}%</div>
-        ${progressBar(toolingProgress)}
       </div>
       <div class="card">
         <div class="card-title">Open Tasks</div>
@@ -71,7 +65,6 @@ function renderDashboard() {
       ${DATA.systems.map((s) => `
         <div class="card">
           <div class="card-title">${s.name} ${badge(s.status)}</div>
-          ${progressBar(s.progress)}
         </div>
       `).join("")}
     </div>
@@ -93,7 +86,6 @@ function renderCar() {
           <div class="item-name">${s.name}<span class="item-cat">${s.category}</span></div>
           ${badge(s.status)}
         </div>
-        ${progressBar(s.progress)}
         ${s.notes ? `<div class="item-notes">${s.notes}</div>` : ""}
       </div>
     `).join("")}
@@ -112,7 +104,6 @@ function renderTooling() {
           <div class="item-name">${t.name}</div>
           ${badge(t.status)}
         </div>
-        ${progressBar(t.progress)}
         ${t.notes ? `<div class="item-notes">${t.notes}</div>` : ""}
       </div>
     `).join("")}

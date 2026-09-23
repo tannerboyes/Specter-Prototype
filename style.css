@@ -796,6 +796,42 @@ h2 {
   background: var(--red-bg);
 }
 
+.item-actions-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.action-btn {
+  all: unset;
+  font-style: italic;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.action-btn:hover {
+  color: var(--btn-bg);
+}
+
+.action-btn-danger:hover {
+  color: var(--red);
+}
+
+.action-btn svg {
+  flex-shrink: 0;
+}
+
 @media (max-width: 520px) {
   .bench-option-row { grid-template-columns: 1fr; }
   .bench-option-card-head { flex-direction: column; padding-right: 0; }

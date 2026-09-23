@@ -220,7 +220,6 @@ function taskItemCardHtml(item) {
         <div class="item-name">
           ${escapeHtml(item.whatNeedsDoing)}
           ${item.category ? `<span class="item-cat">${escapeHtml(item.category)}</span>` : ""}
-          ${editIconHtml(item.id)}
         </div>
         <span class="badge ${item.done ? "badge-complete" : "badge-in-progress"}">${item.done ? "Done" : "Open"}</span>
       </div>
@@ -232,11 +231,12 @@ function taskItemCardHtml(item) {
           ${item.links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}
         </div>` : ""}
 
-      <div class="bench-item-actions">
+      <div class="item-actions-bar">
+        <button type="button" class="action-btn" data-edit-item="${item.id}">${pencilIconHtml()} Edit</button>
         ${item.done
-          ? `<button type="button" class="bench-secondary-btn task-reopen-btn" data-item="${item.id}">Reopen</button>`
-          : `<button type="button" class="bench-approve-btn" data-item="${item.id}">Mark done</button>`}
-        <button type="button" class="bench-delete-item" data-item="${item.id}">Delete</button>
+          ? `<button type="button" class="action-btn task-reopen-btn" data-item="${item.id}">${reopenIconHtml()} Reopen</button>`
+          : `<button type="button" class="action-btn bench-approve-btn" data-item="${item.id}">${checkIconHtml()} Mark done</button>`}
+        <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
       </div>
     </div>
   `;
@@ -428,6 +428,18 @@ function guessVendorFromUrl(url) {
 
 function editIconHtml(itemId) {
   return `<button type="button" class="edit-icon" data-edit-item="${itemId}" aria-label="Edit">&#9998;</button>`;
+}
+
+function pencilIconHtml() {
+  return `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.4 2.4a1.4 1.4 0 0 1 2 2L5 12.8l-2.8.7.7-2.8L11.4 2.4Z"/><path d="M9.8 4l2 2"/></svg>`;
+}
+
+function checkIconHtml() {
+  return `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>`;
+}
+
+function reopenIconHtml() {
+  return `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v3.5h3.5"/><path d="M4.2 7A5 5 0 1 1 4 10.5"/></svg>`;
 }
 
 function expandableHtml(text) {
@@ -797,7 +809,6 @@ function benchItemCardHtml(item) {
 
       <div class="bench-title-row">
         <h3 class="bench-item-title">${escapeHtml(item.partName)}</h3>
-        ${editIconHtml(item.id)}
       </div>
 
       <div class="bench-item-meta">Submitted by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}</div>
@@ -805,16 +816,17 @@ function benchItemCardHtml(item) {
       ${expandableHtml(item.reason)}
 
       ${item.beforeOrdering ? `
-        <p class="bench-before"><strong>Before ordering:</strong> ${escapeHtml(item.beforeOrdering)} ${editIconHtml(item.id)}</p>
+        <p class="bench-before"><strong>Before ordering:</strong> ${escapeHtml(item.beforeOrdering)}</p>
       ` : ""}
 
       <div class="bench-options-list">
         ${item.options.map((opt) => benchOptionCardHtml(item, opt)).join("")}
       </div>
 
-      <div class="bench-item-actions">
-        ${item.status === "approved" ? `<button type="button" class="bench-secondary-btn bench-reopen-btn" data-item="${item.id}">Reopen decision</button>` : ""}
-        <button type="button" class="bench-delete-item icon-trash-btn" data-item="${item.id}" aria-label="Delete item" title="Delete item">${trashIconHtml()}</button>
+      <div class="item-actions-bar">
+        <button type="button" class="action-btn" data-edit-item="${item.id}">${pencilIconHtml()} Edit</button>
+        ${item.status === "approved" ? `<button type="button" class="action-btn bench-reopen-btn" data-item="${item.id}">${reopenIconHtml()} Reopen decision</button>` : ""}
+        <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
       </div>
     </div>
   `;

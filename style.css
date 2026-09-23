@@ -404,21 +404,6 @@ h2 {
   line-height: 1.4;
 }
 
-.bo-picture-file {
-  font-size: 13px;
-  color: var(--text);
-}
-
-.bo-picture-preview {
-  display: none;
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  margin-top: 8px;
-}
-
 #bench-form input[type="text"],
 #bench-form input[type="url"],
 #bench-form textarea,

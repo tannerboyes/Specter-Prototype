@@ -41,6 +41,16 @@ body {
   min-height: 100vh;
 }
 
+.corner-logo {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  z-index: 50;
+}
+
 /* Italic is reserved for buttons and caption/sub-text; everything else
    (headings, body copy, form input values) stays upright. */
 button,

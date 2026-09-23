@@ -832,6 +832,72 @@ h2 {
   flex-shrink: 0;
 }
 
+.hidden-section {
+  display: none;
+}
+
+.comments-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.comment {
+  background: var(--panel-2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.comment-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+
+.comment-text {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.comment-empty {
+  margin: 0 0 10px;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-author,
+.comment-text-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text);
+  width: 100%;
+  resize: vertical;
+}
+
+.comment-author:focus,
+.comment-text-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.comment-form button {
+  align-self: flex-start;
+}
+
 @media (max-width: 520px) {
   .bench-option-row { grid-template-columns: 1fr; }
   .bench-option-card-head { flex-direction: column; padding-right: 0; }

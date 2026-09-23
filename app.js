@@ -236,13 +236,17 @@ function taskItemCardHtml(item) {
         ${item.done
           ? `<button type="button" class="action-btn task-reopen-btn" data-item="${item.id}">${reopenIconHtml()} Reopen</button>`
           : `<button type="button" class="action-btn bench-approve-btn" data-item="${item.id}">${checkIconHtml()} Mark done</button>`}
+        ${commentActionBtnHtml(item)}
         <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
       </div>
+      ${commentsSectionHtml(item)}
     </div>
   `;
 }
 
 function wireTaskList() {
+  wireComments("#tasks", taskItems, saveTaskItems, renderTasks);
+
   document.querySelectorAll("#tasks [data-edit-item]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = taskItems.find((i) => i.id === btn.dataset.editItem);
@@ -440,6 +444,69 @@ function checkIconHtml() {
 
 function reopenIconHtml() {
   return `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v3.5h3.5"/><path d="M4.2 7A5 5 0 1 1 4 10.5"/></svg>`;
+}
+
+function commentIconHtml() {
+  return `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.3h12v7.4H6.3L3 13.3v-2.6H2z"/></svg>`;
+}
+
+/* ---------- Comments (shared by Tasks & Bench items) ---------- */
+
+const openCommentThreads = new Set();
+
+function commentsSectionHtml(item) {
+  const comments = item.comments || [];
+  return `
+    <div class="comments-section${openCommentThreads.has(item.id) ? "" : " hidden-section"}" data-comments-for="${item.id}">
+      ${comments.length ? `
+        <div class="comment-list">
+          ${comments.map((c) => `
+            <div class="comment">
+              <div class="comment-meta">${escapeHtml(c.author || "Unknown")} &middot; ${escapeHtml(c.date)}</div>
+              <div class="comment-text">${escapeHtml(c.text)}</div>
+            </div>
+          `).join("")}
+        </div>
+      ` : `<p class="view-sub comment-empty">No comments yet.</p>`}
+      <form class="comment-form" data-comment-form="${item.id}">
+        <input type="text" class="comment-author" placeholder="Your name" />
+        <textarea class="comment-text-input" rows="2" placeholder="Add a comment..." required></textarea>
+        <button type="submit" class="bench-secondary-btn">Post comment</button>
+      </form>
+    </div>
+  `;
+}
+
+function commentActionBtnHtml(item) {
+  const count = (item.comments || []).length;
+  return `<button type="button" class="action-btn comment-toggle-btn" data-item="${item.id}">${commentIconHtml()} Comment${count ? ` (${count})` : ""}</button>`;
+}
+
+function wireComments(containerSelector, items, saveFn, renderFn) {
+  document.querySelectorAll(`${containerSelector} .comment-toggle-btn`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.item;
+      if (openCommentThreads.has(id)) openCommentThreads.delete(id);
+      else openCommentThreads.add(id);
+      renderFn();
+    });
+  });
+
+  document.querySelectorAll(`${containerSelector} [data-comment-form]`).forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const item = items.find((i) => i.id === form.dataset.commentForm);
+      if (!item) return;
+      const author = form.querySelector(".comment-author").value.trim();
+      const text = form.querySelector(".comment-text-input").value.trim();
+      if (!text) return;
+      if (!item.comments) item.comments = [];
+      item.comments.push({ id: "c" + Date.now(), author, text, date: new Date().toISOString().slice(0, 10) });
+      saveFn();
+      openCommentThreads.add(item.id);
+      renderFn();
+    });
+  });
 }
 
 function expandableHtml(text) {
@@ -826,13 +893,17 @@ function benchItemCardHtml(item) {
       <div class="item-actions-bar">
         <button type="button" class="action-btn" data-edit-item="${item.id}">${pencilIconHtml()} Edit</button>
         ${item.status === "approved" ? `<button type="button" class="action-btn bench-reopen-btn" data-item="${item.id}">${reopenIconHtml()} Reopen decision</button>` : ""}
+        ${commentActionBtnHtml(item)}
         <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
       </div>
+      ${commentsSectionHtml(item)}
     </div>
   `;
 }
 
 function wireBenchList() {
+  wireComments("#bench", benchItems, saveBenchItems, renderBench);
+
   document.querySelectorAll("#bench [data-edit-item]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = benchItems.find((i) => i.id === btn.dataset.editItem);

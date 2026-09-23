@@ -399,6 +399,33 @@ function extractDomainLabel(url) {
   }
 }
 
+const TWO_PART_TLDS = new Set([
+  "co.uk", "org.uk", "ac.uk", "gov.uk", "co.nz", "co.za", "co.jp",
+  "co.in", "co.kr", "com.au", "com.br", "com.mx",
+]);
+
+function guessVendorFromUrl(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const parts = host.split(".");
+    let label;
+    if (parts.length >= 3 && TWO_PART_TLDS.has(parts.slice(-2).join("."))) {
+      label = parts[parts.length - 3];
+    } else if (parts.length > 2) {
+      label = parts[parts.length - 2];
+    } else {
+      label = parts[0];
+    }
+    return label
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  } catch (e) {
+    return "";
+  }
+}
+
 function editIconHtml(itemId) {
   return `<button type="button" class="edit-icon" data-edit-item="${itemId}" aria-label="Edit">&#9998;</button>`;
 }
@@ -615,6 +642,17 @@ function wireBenchForm() {
     if (block && optionsContainer.querySelectorAll(".bench-option-block").length > 1) {
       block.remove();
       refreshBenchOptionNumbering();
+    }
+  });
+
+  optionsContainer.addEventListener("change", (e) => {
+    const linkInput = e.target.closest(".bo-link");
+    if (!linkInput || !linkInput.value.trim()) return;
+    const block = linkInput.closest(".bench-option-block");
+    const vendorInput = block.querySelector(".bo-vendor");
+    if (vendorInput && !vendorInput.value.trim()) {
+      const guess = guessVendorFromUrl(linkInput.value.trim());
+      if (guess) vendorInput.value = guess;
     }
   });
 

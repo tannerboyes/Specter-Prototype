@@ -495,7 +495,8 @@ h2 {
   overflow: hidden;
 }
 
-.expandable.expanded .expandable-text {
+.expandable.expanded .expandable-text,
+.expandable-text.measuring {
   -webkit-line-clamp: unset;
   overflow: visible;
 }
@@ -709,6 +710,18 @@ h2 {
 
 .bench-delete-item:hover {
   color: var(--red);
+}
+
+.icon-trash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.icon-trash-btn:hover {
+  background: var(--red-bg);
 }
 
 @media (max-width: 520px) {

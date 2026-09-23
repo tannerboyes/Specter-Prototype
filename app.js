@@ -24,6 +24,7 @@ function renderDashboard() {
   const toolingProgress = avg(DATA.tooling.map((t) => t.progress));
   const openTasks = taskItems.filter((t) => !t.done).length;
   const doneTasks = taskItems.filter((t) => t.done).length;
+  const benchOpen = benchItems.filter((b) => b.status !== "approved").length;
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `
@@ -46,6 +47,10 @@ function renderDashboard() {
       <div class="card">
         <div class="card-title">Completed Tasks</div>
         <div class="card-value">${doneTasks}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Bench Decisions Needed</div>
+        <div class="card-value">${benchOpen}</div>
       </div>
       ${blockedSystems > 0 ? `
       <div class="card">
@@ -282,7 +287,7 @@ function taskItemCardHtml(item) {
 }
 
 function wireTaskList() {
-  document.querySelectorAll(".task-reopen-btn").forEach((btn) => {
+  document.querySelectorAll("#tasks .task-reopen-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = taskItems.find((i) => i.id === btn.dataset.item);
       if (!item) return;
@@ -293,7 +298,7 @@ function wireTaskList() {
     });
   });
 
-  document.querySelectorAll(".bench-approve-btn").forEach((btn) => {
+  document.querySelectorAll("#tasks .bench-approve-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = taskItems.find((i) => i.id === btn.dataset.item);
       if (!item) return;
@@ -304,7 +309,7 @@ function wireTaskList() {
     });
   });
 
-  document.querySelectorAll(".bench-delete-item").forEach((btn) => {
+  document.querySelectorAll("#tasks .bench-delete-item").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!confirm("Delete this task?")) return;
       taskItems = taskItems.filter((i) => i.id !== btn.dataset.item);
@@ -414,13 +419,32 @@ function expandableHtml(text) {
 }
 
 function wireExpandables(root) {
-  root.querySelectorAll(".expandable").forEach((box) => {
-    const textEl = box.querySelector(".expandable-text");
+  const boxes = root.querySelectorAll(".expandable");
+
+  const measure = () => {
+    boxes.forEach((box) => {
+      const textEl = box.querySelector(".expandable-text");
+      const btn = box.querySelector(".more-toggle");
+      // -webkit-line-clamp discards the overflow at layout time rather than
+      // just hiding it, so scrollHeight === clientHeight even when clamped.
+      // Briefly un-clamp to measure the true full height, then restore.
+      const clampedHeight = textEl.clientHeight;
+      textEl.classList.add("measuring");
+      const fullHeight = textEl.scrollHeight;
+      textEl.classList.remove("measuring");
+      btn.style.display = fullHeight <= clampedHeight + 2 ? "none" : "";
+    });
+  };
+
+  measure();
+  // The custom typeface loads asynchronously; re-measure once it's in so
+  // wrapping (and therefore overflow) reflects the final rendered font.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(measure);
+  }
+
+  boxes.forEach((box) => {
     const btn = box.querySelector(".more-toggle");
-    if (textEl.scrollHeight <= textEl.clientHeight + 2) {
-      btn.style.display = "none";
-      return;
-    }
     btn.addEventListener("click", () => {
       const expanded = box.classList.toggle("expanded");
       btn.innerHTML = expanded ? `Less <span class="chevron up">&#9662;</span>` : `More <span class="chevron">&#9662;</span>`;
@@ -448,6 +472,10 @@ function escapeHtml(str) {
 
 function escapeAttr(str) {
   return escapeHtml(str).replace(/`/g, "&#96;");
+}
+
+function trashIconHtml() {
+  return `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.2h11M6.2 4.2V2.4a.6.6 0 0 1 .6-.6h2.4a.6.6 0 0 1 .6.6v1.8M3.6 4.2l.6 8.9c.04.6.53 1 1.1 1h5.4c.57 0 1.06-.4 1.1-1l.6-8.9M6.6 7v4.2M9.4 7v4.2"/></svg>`;
 }
 
 /* ---- More-links parsing: one per line, "Name | https://..." or a bare URL ---- */
@@ -752,7 +780,7 @@ function benchItemCardHtml(item) {
 
       <div class="bench-item-actions">
         ${item.status === "approved" ? `<button type="button" class="bench-secondary-btn bench-reopen-btn" data-item="${item.id}">Reopen decision</button>` : ""}
-        <button type="button" class="bench-delete-item" data-item="${item.id}">Delete item</button>
+        <button type="button" class="bench-delete-item icon-trash-btn" data-item="${item.id}" aria-label="Delete item" title="Delete item">${trashIconHtml()}</button>
       </div>
     </div>
   `;
@@ -766,7 +794,7 @@ function wireBenchList() {
     });
   });
 
-  document.querySelectorAll(".bench-approve-btn").forEach((btn) => {
+  document.querySelectorAll("#bench .bench-approve-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = benchItems.find((i) => i.id === btn.dataset.item);
       if (!item) return;
@@ -777,7 +805,7 @@ function wireBenchList() {
     });
   });
 
-  document.querySelectorAll(".bench-reopen-btn").forEach((btn) => {
+  document.querySelectorAll("#bench .bench-reopen-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const item = benchItems.find((i) => i.id === btn.dataset.item);
       if (!item) return;
@@ -788,7 +816,7 @@ function wireBenchList() {
     });
   });
 
-  document.querySelectorAll(".bench-delete-item").forEach((btn) => {
+  document.querySelectorAll("#bench .bench-delete-item").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!confirm("Delete this bench item?")) return;
       benchItems = benchItems.filter((i) => i.id !== btn.dataset.item);

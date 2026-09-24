@@ -473,6 +473,10 @@ function taskFormHtml() {
         <label class="field-label" for="af-checkfirst">Check first (optional)</label>
         <textarea id="af-checkfirst" rows="2">${editing ? escapeHtml(editing.checkFirst) : ""}</textarea>
 
+        <label class="field-label" for="af-picture">Photo (optional)</label>
+        <input type="text" id="af-picture" class="af-picture" placeholder="Paste a copied image or image link..." value="${editing ? escapeAttr(editing.picture || "") : ""}" />
+        <p class="field-hint">Paste a copied screenshot or image directly (Ctrl+V / Cmd+V), or right-click a photo online and "Copy image address" and paste that link instead.</p>
+
         <div class="bench-options-divider">Reference links (optional)</div>
         <div id="task-links-container">${linkRowsHtml}</div>
         <button type="button" id="task-add-link" class="bench-secondary-btn bench-add-link-btn">+ Add a link</button>
@@ -513,6 +517,30 @@ function wireTaskForm() {
     closeTaskForm();
   });
 
+  document.getElementById("task-form").addEventListener("paste", (e) => {
+    const pictureInput = e.target.closest(".af-picture");
+    if (!pictureInput) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find((it) => it.type.startsWith("image/"));
+    if (!imageItem) return; // not an image — let a pasted link paste normally
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    pictureInput.value = "Processing image...";
+    pictureInput.disabled = true;
+    resizeImageToDataUrl(file, 1000, 0.75)
+      .then((dataUrl) => {
+        pictureInput.value = dataUrl;
+        pictureInput.disabled = false;
+      })
+      .catch(() => {
+        pictureInput.value = "";
+        pictureInput.disabled = false;
+        alert("Couldn't read that image. Try pasting a link instead.");
+      });
+  });
+
   document.getElementById("task-form").addEventListener("submit", (e) => {
     e.preventDefault();
 
@@ -530,6 +558,7 @@ function wireTaskForm() {
     const category = document.getElementById("af-category").value.trim();
     const reason = document.getElementById("af-reason").value.trim();
     const checkFirst = document.getElementById("af-checkfirst").value.trim();
+    const picture = document.getElementById("af-picture").value.trim();
 
     if (taskEditingId) {
       const item = taskItems.find((i) => i.id === taskEditingId);
@@ -540,6 +569,7 @@ function wireTaskForm() {
         item.category = category;
         item.reason = reason;
         item.checkFirst = checkFirst;
+        item.picture = picture;
         item.links = links;
       }
     } else {
@@ -553,6 +583,7 @@ function wireTaskForm() {
         category,
         reason,
         checkFirst,
+        picture,
         links,
         done: false,
         doneAt: null,
@@ -592,6 +623,11 @@ function taskItemCardHtml(item) {
       <div class="bench-item-meta">Added by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}${item.estimatedTime ? ` &middot; Est. ${escapeHtml(item.estimatedTime)}` : ""}</div>
       <div class="item-notes">${escapeHtml(item.reason)}</div>
       ${item.checkFirst ? `<p class="bench-before"><strong>Check first:</strong> ${escapeHtml(item.checkFirst)}</p>` : ""}
+      ${item.picture ? `
+        <a href="${escapeAttr(item.picture)}" target="_blank" rel="noopener noreferrer" class="bench-thumb-link" aria-label="View photo">
+          <span class="bench-thumb-fallback">&#8599;</span>
+          <img src="${escapeAttr(item.picture)}" alt="${escapeAttr(item.whatNeedsDoing || "task photo")}" class="bench-thumb" onerror="this.style.display='none'" />
+        </a>` : ""}
       ${item.links.length ? `
         <div class="bench-more-links">
           ${item.links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}

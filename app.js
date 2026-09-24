@@ -650,6 +650,38 @@ function saveBenchItems() {
   supabaseSyncTable("bench_items", benchItems);
 }
 
+// Downscales a pasted image and re-encodes it as JPEG so a full-size
+// screenshot doesn't blow up localStorage/Supabase with a multi-MB data URI.
+function resizeImageToDataUrl(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -713,8 +745,8 @@ function benchOptionBlockHtml(blockId, number, opt) {
       <input type="url" id="${blockId}-link" class="bo-link" placeholder="https://..." value="${escapeAttr(opt.link || "")}" />
 
       <label class="field-label" for="${blockId}-picture">Picture (optional)</label>
-      <input type="url" id="${blockId}-picture" class="bo-picture" placeholder="https://....jpg" value="${escapeAttr(opt.picture || "")}" />
-      <p class="field-hint">Press and hold the product photo on that page and choose Copy (on a computer, right-click &rarr; Copy image address), then paste it here. It shows as a thumbnail linked to the page.</p>
+      <input type="text" id="${blockId}-picture" class="bo-picture" placeholder="Paste a copied image or image link..." value="${escapeAttr(opt.picture || "")}" />
+      <p class="field-hint">Paste a copied screenshot or image directly (Ctrl+V / Cmd+V), or right-click a photo online and "Copy image address" and paste that link instead. Shows as a thumbnail.</p>
 
       <label class="field-label" for="${blockId}-notes">Notes</label>
       <textarea id="${blockId}-notes" class="bo-notes" rows="2">${escapeHtml(opt.notes || "")}</textarea>
@@ -811,6 +843,30 @@ function wireBenchForm() {
       block.remove();
       refreshBenchOptionNumbering();
     }
+  });
+
+  optionsContainer.addEventListener("paste", (e) => {
+    const pictureInput = e.target.closest(".bo-picture");
+    if (!pictureInput) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find((it) => it.type.startsWith("image/"));
+    if (!imageItem) return; // not an image — let a pasted link paste normally
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    pictureInput.value = "Processing image...";
+    pictureInput.disabled = true;
+    resizeImageToDataUrl(file, 1000, 0.75)
+      .then((dataUrl) => {
+        pictureInput.value = dataUrl;
+        pictureInput.disabled = false;
+      })
+      .catch(() => {
+        pictureInput.value = "";
+        pictureInput.disabled = false;
+        alert("Couldn't read that image. Try pasting a link instead.");
+      });
   });
 
   document.getElementById("bench-cancel").addEventListener("click", () => {

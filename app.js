@@ -388,6 +388,29 @@ document.addEventListener("click", (e) => {
 
 /* ---------- Dashboard ---------- */
 
+// Downloads everything (every project's tasks/bench items/shipments/log) as
+// one JSON file — a manual backup independent of Supabase/localStorage, so
+// there's always a copy in the user's own hands.
+function exportAllData() {
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    projects,
+    tasks: taskItems,
+    benchItems,
+    shipments,
+    activityLog,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `specter-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderDashboard() {
   const openTasks = taskItems.filter((t) => inActiveProject(t) && !t.done).length;
   const doneTasks = taskItems.filter((t) => inActiveProject(t) && t.done).length;
@@ -398,6 +421,8 @@ function renderDashboard() {
   document.getElementById("dashboard").innerHTML = `
     <h1>Development Dashboard</h1>
     <p class="view-sub">${DATA.meta.tagline}</p>
+
+    <button type="button" id="export-data-btn" class="bench-secondary-btn">Export data (backup)</button>
 
     <div class="grid">
       <div class="card card-link" data-nav="tasks">
@@ -430,6 +455,8 @@ function renderDashboard() {
   document.querySelectorAll("#dashboard .card-link").forEach((card) => {
     card.addEventListener("click", () => showView(card.dataset.nav));
   });
+
+  document.getElementById("export-data-btn").addEventListener("click", exportAllData);
 }
 
 

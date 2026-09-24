@@ -1073,9 +1073,12 @@ function createShipmentFromBenchApproval(item, chosenOption) {
     partName: item.partName,
     optionName: chosenOption ? chosenOption.whatItIs : "",
     vendor: chosenOption ? chosenOption.vendor : "",
-    orderedDate: new Date().toISOString().slice(0, 10),
+    link: chosenOption ? chosenOption.link : "",
+    createdAt: new Date().toISOString().slice(0, 10),
+    orderConfirmation: "",
+    orderedDate: null,
     trackingNumber: "",
-    status: "ordered",
+    status: "needs-ordering",
     deliveredDate: null,
   });
   saveShipments();
@@ -1083,6 +1086,7 @@ function createShipmentFromBenchApproval(item, chosenOption) {
 
 function shipmentBadge(status) {
   const map = {
+    "needs-ordering": { cls: "pending", label: "Needs Ordering" },
     "ordered": { cls: "not-started", label: "Ordered" },
     "in-transit": { cls: "in-progress", label: "In Transit" },
     "delivered": { cls: "complete", label: "Delivered" },
@@ -1092,12 +1096,13 @@ function shipmentBadge(status) {
 }
 
 function shipmentCardHtml(s) {
+  const needsOrdering = s.status === "needs-ordering";
   return `
     <div class="bench-item-card">
       <div class="bench-eyebrow">
         <span>${escapeHtml(s.vendor || "Vendor unknown")}</span>
         <span class="bench-eyebrow-sep">&middot;</span>
-        <span>Ordered ${escapeHtml(s.orderedDate)}</span>
+        <span>${needsOrdering ? `Approved ${escapeHtml(s.createdAt)}` : `Ordered ${escapeHtml(s.orderedDate || "")}`}</span>
         <span class="bench-item-number">${shipmentBadge(s.status)}</span>
       </div>
 
@@ -1106,10 +1111,18 @@ function shipmentCardHtml(s) {
       </div>
       ${s.optionName ? `<div class="bench-item-meta">${escapeHtml(s.optionName)}</div>` : ""}
 
+      ${s.link ? `<a href="${escapeAttr(s.link)}" target="_blank" rel="noopener noreferrer" class="bench-link-btn">${needsOrdering ? "Order from " + escapeHtml(s.vendor || "vendor") : "View order page"} &#8599;</a>` : ""}
+
+      <label class="field-label" for="conf-${s.id}">Order confirmation # (optional)</label>
+      <input type="text" id="conf-${s.id}" class="ship-confirmation-input" data-item="${s.id}" value="${escapeAttr(s.orderConfirmation || "")}" placeholder="Add confirmation number..." />
+
+      ${!needsOrdering ? `
       <label class="field-label" for="track-${s.id}">Tracking number (optional)</label>
       <input type="text" id="track-${s.id}" class="ship-tracking-input" data-item="${s.id}" value="${escapeAttr(s.trackingNumber || "")}" placeholder="Add tracking number..." />
+      ` : ""}
 
       <div class="bench-item-actions">
+        ${needsOrdering ? `<button type="button" class="bench-approve-btn ship-mark-ordered-btn" data-item="${s.id}">Mark as ordered</button>` : ""}
         ${s.status === "ordered" ? `<button type="button" class="bench-approve-btn ship-advance-btn" data-item="${s.id}" data-next="in-transit">Mark in transit</button>` : ""}
         ${s.status === "in-transit" ? `<button type="button" class="bench-approve-btn ship-advance-btn" data-item="${s.id}" data-next="delivered">Mark delivered</button>` : ""}
         ${s.status === "delivered" ? `<button type="button" class="bench-secondary-btn ship-reopen-btn" data-item="${s.id}">Reopen</button>` : ""}
@@ -1120,6 +1133,32 @@ function shipmentCardHtml(s) {
 }
 
 function wireShipmentsList() {
+  document.querySelectorAll("#shipments .ship-mark-ordered-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = shipments.find((x) => x.id === btn.dataset.item);
+      if (!s) return;
+      s.status = "ordered";
+      s.orderedDate = new Date().toISOString().slice(0, 10);
+      saveShipments();
+      addLogEntry(
+        "Order placed",
+        `"${s.partName}" ordered${s.vendor ? " from " + s.vendor : ""}.`
+      );
+      renderShipments();
+      renderDashboard();
+      renderLog();
+    });
+  });
+
+  document.querySelectorAll("#shipments .ship-confirmation-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const s = shipments.find((x) => x.id === input.dataset.item);
+      if (!s) return;
+      s.orderConfirmation = input.value.trim();
+      saveShipments();
+    });
+  });
+
   document.querySelectorAll("#shipments .ship-advance-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const s = shipments.find((x) => x.id === btn.dataset.item);

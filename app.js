@@ -179,6 +179,19 @@ function inActiveProject(item) {
   return item.projectId === activeProjectId;
 }
 
+// A plain <select> for moving a miscategorized task/bench item to a
+// different project. Omitted entirely when there's nowhere else to move it.
+function moveSelectHtml(item) {
+  const others = projects.filter((p) => p.id !== item.projectId);
+  if (others.length === 0) return "";
+  return `
+    <select class="move-project-select" data-item="${escapeAttr(item.id)}" aria-label="Move to another project">
+      <option value="" selected disabled>Move to&hellip;</option>
+      ${others.map((p) => `<option value="${escapeAttr(p.id)}">${escapeHtml(p.name)}</option>`).join("")}
+    </select>
+  `;
+}
+
 function renderAll() {
   renderDashboard();
   renderTasks();
@@ -596,6 +609,7 @@ function taskItemCardHtml(item) {
           : `<button type="button" class="action-btn bench-approve-btn" data-item="${item.id}">${checkIconHtml()} Mark done</button>`}
         ${commentActionBtnHtml(item)}
         <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
+        ${moveSelectHtml(item)}
       </div>
       ${commentsSectionHtml(item)}
     </div>
@@ -611,6 +625,17 @@ function wireTaskList() {
       if (!item) return;
       item.actualTime = input.value.trim();
       saveTaskItems();
+    });
+  });
+
+  document.querySelectorAll("#tasks .move-project-select").forEach((select) => {
+    select.addEventListener("change", () => {
+      const item = taskItems.find((i) => i.id === select.dataset.item);
+      if (!item || !select.value) return;
+      item.projectId = select.value;
+      saveTaskItems();
+      renderTasks();
+      renderDashboard();
     });
   });
 
@@ -1313,6 +1338,7 @@ function benchItemCardHtml(item) {
         ${item.status === "approved" ? `<button type="button" class="action-btn bench-reopen-btn" data-item="${item.id}">${reopenIconHtml()} Reopen decision</button>` : ""}
         ${commentActionBtnHtml(item)}
         <button type="button" class="action-btn action-btn-danger bench-delete-item" data-item="${item.id}">${trashIconHtml()} Delete</button>
+        ${moveSelectHtml(item)}
       </div>
       ${commentsSectionHtml(item)}
     </div>
@@ -1321,6 +1347,21 @@ function benchItemCardHtml(item) {
 
 function wireBenchList() {
   wireComments("#bench", benchItems, saveBenchItems, renderBench);
+
+  document.querySelectorAll("#bench .move-project-select").forEach((select) => {
+    select.addEventListener("change", () => {
+      const item = benchItems.find((i) => i.id === select.dataset.item);
+      if (!item || !select.value) return;
+      item.projectId = select.value;
+      const relatedShipments = shipments.filter((s) => s.benchItemId === item.id);
+      relatedShipments.forEach((s) => { s.projectId = select.value; });
+      saveBenchItems();
+      if (relatedShipments.length) saveShipments();
+      renderBench();
+      renderDashboard();
+      renderShipments();
+    });
+  });
 
   document.querySelectorAll("#bench [data-edit-item]").forEach((btn) => {
     btn.addEventListener("click", () => {

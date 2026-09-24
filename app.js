@@ -20,30 +20,50 @@ async function supabaseFetchTable(table) {
   return rows.map((r) => r.data);
 }
 
+/*
+ * Per-table snapshot of what this browser last saw on (or sent to) the
+ * server: id -> JSON string. Saving compares against it so a browser only
+ * sends what IT changed:
+ *  - items new or edited here are upserted;
+ *  - items this browser knew about and then removed are deleted by id;
+ *  - anything it never saw (added from another device after this page
+ *    loaded) is left alone, so a stale tab can't wipe other people's work.
+ */
+const syncedSnapshot = {};
+
+function rememberSynced(table, items) {
+  const snap = {};
+  items.forEach((it) => { if (it && it.id) snap[it.id] = JSON.stringify(it); });
+  syncedSnapshot[table] = snap;
+}
+
 async function supabaseSyncTable(table, items) {
+  const prev = syncedSnapshot[table] || {};
+  const changed = items.filter((it) => it && it.id && prev[it.id] !== JSON.stringify(it));
+  const currentIds = new Set(items.map((it) => it && it.id));
+  const removedIds = Object.keys(prev).filter((id) => !currentIds.has(id));
+  const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
   try {
-    if (items.length === 0) {
-      await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=neq.__none__`, {
+    for (const id of removedIds) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+        headers,
       });
-      return;
+      if (res.ok) delete prev[id];
     }
-    const idList = items.map((it) => it.id).join(",");
-    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=not.in.(${idList})`, {
-      method: "DELETE",
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(items.map((it) => ({ id: it.id, data: it, updated_at: new Date().toISOString() }))),
-    });
+    if (changed.length > 0) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(changed.map((it) => ({ id: it.id, data: it, updated_at: new Date().toISOString() }))),
+      });
+      if (res.ok) changed.forEach((it) => { prev[it.id] = JSON.stringify(it); });
+    }
+    syncedSnapshot[table] = prev;
   } catch (e) {
     console.warn(`Supabase sync failed for ${table}`, e);
   }
@@ -68,6 +88,7 @@ async function bootstrapFromSupabase() {
     // wiping it with the empty remote table.
     if (tasksResult.status === "fulfilled") {
       const tasks = tasksResult.value;
+      rememberSynced("tasks", tasks);
       if (tasks.length === 0 && taskItems.length > 0) supabaseSyncTable("tasks", taskItems);
       else taskItems = tasks;
     } else {
@@ -76,6 +97,7 @@ async function bootstrapFromSupabase() {
 
     if (benchResult.status === "fulfilled") {
       const bench = benchResult.value;
+      rememberSynced("bench_items", bench);
       if (bench.length === 0 && benchItems.length > 0) supabaseSyncTable("bench_items", benchItems);
       else benchItems = bench;
     } else {
@@ -84,6 +106,7 @@ async function bootstrapFromSupabase() {
 
     if (shipsResult.status === "fulfilled") {
       const ships = shipsResult.value;
+      rememberSynced("shipments", ships);
       if (ships.length === 0 && shipments.length > 0) supabaseSyncTable("shipments", shipments);
       else shipments = ships;
     } else {
@@ -92,6 +115,7 @@ async function bootstrapFromSupabase() {
 
     if (logResult.status === "fulfilled") {
       const log = logResult.value;
+      rememberSynced("activity_log", log);
       if (log.length === 0 && activityLog.length > 0) supabaseSyncTable("activity_log", activityLog);
       else activityLog = log;
     } else {
@@ -100,6 +124,7 @@ async function bootstrapFromSupabase() {
 
     if (projsResult.status === "fulfilled") {
       const projs = projsResult.value;
+      rememberSynced("projects", projs);
       if (projs.length === 0 && projects.length > 0) supabaseSyncTable("projects", projects);
       else projects = projs;
     } else {
@@ -348,6 +373,13 @@ function renderProjectSelector() {
     if (open) {
       closeProjectMenu();
     } else {
+      // Positioned via fixed + JS (not CSS absolute) so the sidebar's own
+      // overflow-y:auto can't clip the menu and hide options at the bottom.
+      const rect = trigger.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 4}px`;
+      menu.style.left = `${rect.left}px`;
+      menu.style.width = `${rect.width}px`;
+      menu.style.maxHeight = `${Math.min(260, window.innerHeight - rect.bottom - 16)}px`;
       menu.hidden = false;
       trigger.setAttribute("aria-expanded", "true");
     }

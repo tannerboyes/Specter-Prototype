@@ -441,22 +441,37 @@ function allLogEntries() {
   return [...activityLog, ...DATA.log].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
-function logEntryHtml(entry) {
+function logEntryHtml(entry, deletable) {
   return `
     <div class="log-entry">
-      <div class="log-date">${escapeHtml(entry.date)}</div>
+      <div class="log-entry-head">
+        <div class="log-date">${escapeHtml(entry.date)}</div>
+        ${deletable && entry.id ? `<button type="button" class="bench-delete-item icon-trash-btn log-delete-btn" data-item="${entry.id}" aria-label="Delete log entry" title="Delete log entry">${trashIconHtml()}</button>` : ""}
+      </div>
       <div class="log-title">${escapeHtml(entry.title)}</div>
       <div class="log-body">${escapeHtml(entry.body)}</div>
     </div>
   `;
 }
 
+function wireLogList() {
+  document.querySelectorAll("#log .log-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!confirm("Delete this log entry?")) return;
+      activityLog = activityLog.filter((e) => e.id !== btn.dataset.item);
+      saveActivityLog();
+      renderLog();
+    });
+  });
+}
+
 function renderLog() {
   document.getElementById("log").innerHTML = `
     <h1>Build Log</h1>
     <p class="view-sub">Dated journal of progress, decisions, and notes.</p>
-    ${allLogEntries().map(logEntryHtml).join("") || `<p class="view-sub">No entries yet.</p>`}
+    ${allLogEntries().map((e) => logEntryHtml(e, true)).join("") || `<p class="view-sub">No entries yet.</p>`}
   `;
+  wireLogList();
 }
 
 /* ---------- Bench ---------- */

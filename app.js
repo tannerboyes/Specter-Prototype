@@ -95,7 +95,7 @@ function renderDashboard() {
   const openTasks = taskItems.filter((t) => !t.done).length;
   const doneTasks = taskItems.filter((t) => t.done).length;
   const benchOpen = benchItems.filter((b) => b.status !== "approved").length;
-  const shipmentsInbound = shipments.filter((s) => s.status !== "delivered").length;
+  const shipmentsInbound = shipments.filter((s) => s.status === "ordered" || s.status === "in-transit").length;
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `

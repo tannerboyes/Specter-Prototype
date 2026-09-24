@@ -1113,10 +1113,10 @@ function shipmentCardHtml(s) {
 
       ${s.link ? `<a href="${escapeAttr(s.link)}" target="_blank" rel="noopener noreferrer" class="bench-link-btn">${needsOrdering ? "Order from " + escapeHtml(s.vendor || "vendor") : "View order page"} &#8599;</a>` : ""}
 
+      ${!needsOrdering ? `
       <label class="field-label" for="conf-${s.id}">Order confirmation # (optional)</label>
       <input type="text" id="conf-${s.id}" class="ship-confirmation-input" data-item="${s.id}" value="${escapeAttr(s.orderConfirmation || "")}" placeholder="Add confirmation number..." />
 
-      ${!needsOrdering ? `
       <label class="field-label" for="track-${s.id}">Tracking number (optional)</label>
       <input type="text" id="track-${s.id}" class="ship-tracking-input" data-item="${s.id}" value="${escapeAttr(s.trackingNumber || "")}" placeholder="Add tracking number..." />
       ` : ""}

@@ -175,6 +175,24 @@ button,
   margin-top: 2px;
 }
 
+.project-select {
+  width: 100%;
+  margin-top: 6px;
+  font-size: 13px;
+  font-style: normal;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.project-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 nav.tabs {
   display: flex;
   flex-direction: column;

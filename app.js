@@ -51,11 +51,12 @@ async function supabaseSyncTable(table, items) {
 
 async function bootstrapFromSupabase() {
   try {
-    const [tasks, bench, ships, log] = await Promise.all([
+    const [tasks, bench, ships, log, projs] = await Promise.all([
       supabaseFetchTable("tasks"),
       supabaseFetchTable("bench_items"),
       supabaseFetchTable("shipments"),
       supabaseFetchTable("activity_log"),
+      supabaseFetchTable("projects"),
     ]);
 
     // If the shared table is empty but this browser already has local data
@@ -73,29 +74,157 @@ async function bootstrapFromSupabase() {
     if (log.length === 0 && activityLog.length > 0) supabaseSyncTable("activity_log", activityLog);
     else activityLog = log;
 
+    if (projs.length === 0 && projects.length > 0) supabaseSyncTable("projects", projects);
+    else projects = projs;
+
+    ensureDefaultProject();
+
     try {
       localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(taskItems));
       localStorage.setItem(BENCH_STORAGE_KEY, JSON.stringify(benchItems));
       localStorage.setItem(SHIPMENT_STORAGE_KEY, JSON.stringify(shipments));
       localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(activityLog));
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
     } catch (e) {}
-    renderDashboard();
-    renderTasks();
-    renderBench();
-    renderShipments();
-    renderLog();
+    renderAll();
+    renderProjectSelector();
   } catch (e) {
     console.warn("Supabase bootstrap failed, showing local data only", e);
   }
 }
 
+/* ---------- Projects ---------- */
+/*
+ * Multiple cars/projects can share this one site. Every task/bench/
+ * shipment/log entry carries a projectId; the sidebar dropdown picks
+ * which project's data is currently shown.
+ */
+
+const PROJECT_STORAGE_KEY = "specter-projects";
+const ACTIVE_PROJECT_KEY = "specter-active-project";
+const DEFAULT_PROJECT_ID = "proj-default";
+let projects = [];
+let activeProjectId = null;
+
+function loadProjects() {
+  try {
+    const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
+function saveProjects() {
+  try { localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects)); } catch (e) {}
+  supabaseSyncTable("projects", projects);
+}
+
+function loadActiveProjectId() {
+  try { return localStorage.getItem(ACTIVE_PROJECT_KEY); } catch (e) { return null; }
+}
+
+function setActiveProjectId(id) {
+  activeProjectId = id;
+  try { localStorage.setItem(ACTIVE_PROJECT_KEY, id); } catch (e) {}
+}
+
+// Makes sure a project always exists and every item belongs to one —
+// migrates any pre-multi-project data (no projectId yet) onto a single
+// default project the first time this runs.
+function ensureDefaultProject() {
+  if (projects.length === 0) {
+    projects = [{
+      id: DEFAULT_PROJECT_ID,
+      name: DATA.meta.carName || "Default Project",
+      createdAt: DATA.meta.updated || new Date().toISOString().slice(0, 10),
+    }];
+    saveProjects();
+  }
+
+  const fallbackId = projects[0].id;
+  let changed = false;
+  [taskItems, benchItems, shipments, activityLog].forEach((arr) => {
+    arr.forEach((item) => {
+      if (!item.projectId) {
+        item.projectId = fallbackId;
+        changed = true;
+      }
+    });
+  });
+  if (changed) {
+    saveTaskItems();
+    saveBenchItems();
+    saveShipments();
+    saveActivityLog();
+  }
+
+  if (!activeProjectId || !projects.some((p) => p.id === activeProjectId)) {
+    setActiveProjectId(projects[0].id);
+  }
+}
+
+function inActiveProject(item) {
+  return item.projectId === activeProjectId;
+}
+
+function renderAll() {
+  renderDashboard();
+  renderTasks();
+  renderBench();
+  renderShipments();
+  renderLog();
+}
+
+function switchProject(id) {
+  setActiveProjectId(id);
+  taskFormOpen = false;
+  taskEditingId = null;
+  benchFormOpen = false;
+  benchEditingId = null;
+  renderAll();
+  renderProjectSelector();
+}
+
+function renderProjectSelector() {
+  const container = document.getElementById("project-selector");
+  if (!container) return;
+  const options = projects
+    .map((p) => `<option value="${escapeAttr(p.id)}" ${p.id === activeProjectId ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
+    .join("");
+  container.innerHTML = `
+    <select id="project-select" class="project-select" aria-label="Select project">
+      ${options}
+      <option value="__new__">+ Add a project&hellip;</option>
+    </select>
+  `;
+  document.getElementById("project-select").addEventListener("change", (e) => {
+    if (e.target.value === "__new__") {
+      const name = prompt("Name this project (e.g. Car No. 2):");
+      if (!name || !name.trim()) {
+        renderProjectSelector();
+        return;
+      }
+      const project = {
+        id: "proj" + Date.now(),
+        name: name.trim(),
+        createdAt: new Date().toISOString().slice(0, 10),
+      };
+      projects.push(project);
+      saveProjects();
+      switchProject(project.id);
+    } else {
+      switchProject(e.target.value);
+    }
+  });
+}
+
 /* ---------- Dashboard ---------- */
 
 function renderDashboard() {
-  const openTasks = taskItems.filter((t) => !t.done).length;
-  const doneTasks = taskItems.filter((t) => t.done).length;
-  const benchOpen = benchItems.filter((b) => b.status !== "approved").length;
-  const shipmentsInbound = shipments.filter((s) => s.status === "ordered" || s.status === "in-transit").length;
+  const openTasks = taskItems.filter((t) => inActiveProject(t) && !t.done).length;
+  const doneTasks = taskItems.filter((t) => inActiveProject(t) && t.done).length;
+  const benchOpen = benchItems.filter((b) => inActiveProject(b) && b.status !== "approved").length;
+  const shipmentsInbound = shipments.filter((s) => inActiveProject(s) && (s.status === "ordered" || s.status === "in-transit")).length;
   const blockedSystems = DATA.systems.filter((s) => s.status === "blocked").length;
 
   document.getElementById("dashboard").innerHTML = `
@@ -272,6 +401,7 @@ function wireTaskForm() {
     } else {
       taskItems.unshift({
         id: "task" + Date.now(),
+        projectId: activeProjectId,
         createdAt: new Date().toISOString().slice(0, 10),
         submitter,
         whatNeedsDoing,
@@ -395,8 +525,9 @@ function renderTasks() {
       <button type="button" id="task-open" class="bench-primary-btn">+ Add task</button>
     `;
 
-  const list = taskItems.length
-    ? `<div class="bench-item-list">${taskItems.map(taskItemCardHtml).join("")}</div>`
+  const projectTasks = taskItems.filter(inActiveProject);
+  const list = projectTasks.length
+    ? `<div class="bench-item-list">${projectTasks.map(taskItemCardHtml).join("")}</div>`
     : `<p class="view-sub">Nothing on the list right now.</p>`;
 
   el.innerHTML = `${header}<div class="bench-list-wrap">${list}</div>`;
@@ -433,12 +564,16 @@ function addLogEntry(title, body) {
     date: new Date().toISOString().slice(0, 10),
     title,
     body,
+    projectId: activeProjectId,
   });
   saveActivityLog();
 }
 
 function allLogEntries() {
-  return [...activityLog, ...DATA.log].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // The static seed entries in data.js predate multi-project support, so
+  // they only show up under the original default project, not new ones.
+  const staticEntries = activeProjectId === DEFAULT_PROJECT_ID ? DATA.log : [];
+  return [...activityLog.filter(inActiveProject), ...staticEntries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
 function logEntryHtml(entry, deletable) {
@@ -918,6 +1053,7 @@ function wireBenchForm() {
     } else {
       benchItems.unshift({
         id: "bench" + Date.now(),
+        projectId: activeProjectId,
         number: nextBenchNumber(),
         createdAt: new Date().toISOString().slice(0, 10),
         submitter,
@@ -1100,8 +1236,9 @@ function renderBench() {
       <button type="button" id="bench-open" class="bench-primary-btn">+ Add an item to the bench</button>
     `;
 
-  const list = benchItems.length
-    ? `<div class="bench-item-list">${benchItems.map(benchItemCardHtml).join("")}</div>`
+  const projectBenchItems = benchItems.filter(inActiveProject);
+  const list = projectBenchItems.length
+    ? `<div class="bench-item-list">${projectBenchItems.map(benchItemCardHtml).join("")}</div>`
     : `<p class="view-sub">Nothing on the bench right now.</p>`;
 
   el.innerHTML = `${header}<div class="bench-list-wrap">${list}</div>`;
@@ -1140,6 +1277,7 @@ function saveShipments() {
 function createShipmentFromBenchApproval(item, chosenOption) {
   shipments.unshift({
     id: "ship" + Date.now(),
+    projectId: item.projectId,
     benchItemId: item.id,
     partName: item.partName,
     optionName: chosenOption ? chosenOption.whatItIs : "",
@@ -1275,11 +1413,12 @@ function wireShipmentsList() {
 }
 
 function renderShipments() {
+  const projectShipments = shipments.filter(inActiveProject);
   document.getElementById("shipments").innerHTML = `
     <h1>Shipments</h1>
     <p class="view-sub">Inbound shipments from approved bench orders.</p>
-    ${shipments.length
-      ? `<div class="bench-item-list">${shipments.map(shipmentCardHtml).join("")}</div>`
+    ${projectShipments.length
+      ? `<div class="bench-item-list">${projectShipments.map(shipmentCardHtml).join("")}</div>`
       : `<p class="view-sub">Nothing inbound right now. Approving a bench item to order adds it here.</p>`}
   `;
   wireShipmentsList();
@@ -1316,11 +1455,11 @@ function initApp() {
   taskItems = loadTaskItems();
   activityLog = loadActivityLog();
   shipments = loadShipments();
-  renderDashboard();
-  renderTasks();
-  renderBench();
-  renderShipments();
-  renderLog();
+  projects = loadProjects();
+  activeProjectId = loadActiveProjectId();
+  ensureDefaultProject();
+  renderAll();
+  renderProjectSelector();
   initNav();
   bootstrapFromSupabase();
 }

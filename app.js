@@ -51,7 +51,11 @@ async function supabaseSyncTable(table, items) {
 
 async function bootstrapFromSupabase() {
   try {
-    const [tasks, bench, ships, log, projs] = await Promise.all([
+    // Promise.allSettled, not Promise.all: one missing/broken table (e.g. a
+    // migration SQL step never run) must not abort syncing for every other
+    // table too. Each table below only updates if ITS OWN fetch succeeded;
+    // a failed fetch leaves that table's local data untouched this round.
+    const [tasksResult, benchResult, shipsResult, logResult, projsResult] = await Promise.allSettled([
       supabaseFetchTable("tasks"),
       supabaseFetchTable("bench_items"),
       supabaseFetchTable("shipments"),
@@ -62,20 +66,45 @@ async function bootstrapFromSupabase() {
     // If the shared table is empty but this browser already has local data
     // (e.g. the first load after turning this on), push it up instead of
     // wiping it with the empty remote table.
-    if (tasks.length === 0 && taskItems.length > 0) supabaseSyncTable("tasks", taskItems);
-    else taskItems = tasks;
+    if (tasksResult.status === "fulfilled") {
+      const tasks = tasksResult.value;
+      if (tasks.length === 0 && taskItems.length > 0) supabaseSyncTable("tasks", taskItems);
+      else taskItems = tasks;
+    } else {
+      console.warn("Supabase fetch failed for tasks, keeping local data", tasksResult.reason);
+    }
 
-    if (bench.length === 0 && benchItems.length > 0) supabaseSyncTable("bench_items", benchItems);
-    else benchItems = bench;
+    if (benchResult.status === "fulfilled") {
+      const bench = benchResult.value;
+      if (bench.length === 0 && benchItems.length > 0) supabaseSyncTable("bench_items", benchItems);
+      else benchItems = bench;
+    } else {
+      console.warn("Supabase fetch failed for bench_items, keeping local data", benchResult.reason);
+    }
 
-    if (ships.length === 0 && shipments.length > 0) supabaseSyncTable("shipments", shipments);
-    else shipments = ships;
+    if (shipsResult.status === "fulfilled") {
+      const ships = shipsResult.value;
+      if (ships.length === 0 && shipments.length > 0) supabaseSyncTable("shipments", shipments);
+      else shipments = ships;
+    } else {
+      console.warn("Supabase fetch failed for shipments, keeping local data", shipsResult.reason);
+    }
 
-    if (log.length === 0 && activityLog.length > 0) supabaseSyncTable("activity_log", activityLog);
-    else activityLog = log;
+    if (logResult.status === "fulfilled") {
+      const log = logResult.value;
+      if (log.length === 0 && activityLog.length > 0) supabaseSyncTable("activity_log", activityLog);
+      else activityLog = log;
+    } else {
+      console.warn("Supabase fetch failed for activity_log, keeping local data", logResult.reason);
+    }
 
-    if (projs.length === 0 && projects.length > 0) supabaseSyncTable("projects", projects);
-    else projects = projs;
+    if (projsResult.status === "fulfilled") {
+      const projs = projsResult.value;
+      if (projs.length === 0 && projects.length > 0) supabaseSyncTable("projects", projects);
+      else projects = projs;
+    } else {
+      console.warn("Supabase fetch failed for projects, keeping local data", projsResult.reason);
+    }
 
     ensureDefaultProject();
 

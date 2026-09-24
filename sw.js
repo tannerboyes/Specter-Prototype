@@ -1,4 +1,4 @@
-const CACHE_NAME = "specter-cache-v3";
+const CACHE_NAME = "specter-cache-v4";
 const PRECACHE_URLS = [
   "./",
   "index.html",
@@ -23,22 +23,21 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Same-origin app-shell files: serve from cache instantly, refresh in the
-// background. Everything else (Supabase calls, cross-origin fonts) passes
-// straight through untouched.
+// Same-origin app-shell files: always try the network first, so an
+// installed home-screen app never gets stuck showing a stale version
+// while there's connectivity. Only fall back to the cached copy when
+// truly offline. Everything else (Supabase calls, cross-origin fonts)
+// passes straight through untouched.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone()));
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(req)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });

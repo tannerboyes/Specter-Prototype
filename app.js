@@ -1621,4 +1621,14 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
+
+  // Without this, an installed home-screen app can keep serving a stale
+  // cached version indefinitely, since reopening it doesn't force a
+  // reload the way visiting a page fresh in a browser tab would.
+  let refreshedAfterUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshedAfterUpdate) return;
+    refreshedAfterUpdate = true;
+    window.location.reload();
+  });
 }

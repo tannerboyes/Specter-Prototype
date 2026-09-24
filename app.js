@@ -185,38 +185,152 @@ function switchProject(id) {
   renderProjectSelector();
 }
 
+function addProjectPrompt() {
+  const name = prompt("Name this project (e.g. Car No. 2):");
+  if (!name || !name.trim()) return;
+  const project = {
+    id: "proj" + Date.now(),
+    name: name.trim(),
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+  projects.push(project);
+  saveProjects();
+  switchProject(project.id);
+}
+
+function renameProject(id) {
+  const project = projects.find((p) => p.id === id);
+  if (!project) return;
+  const name = prompt("Rename project:", project.name);
+  if (!name || !name.trim() || name.trim() === project.name) return;
+  project.name = name.trim();
+  saveProjects();
+  renderProjectSelector();
+}
+
+function deleteProject(id) {
+  const project = projects.find((p) => p.id === id);
+  if (!project) return;
+  if (projects.length <= 1) {
+    alert("You need at least one project — add another before deleting this one.");
+    return;
+  }
+
+  const itemCount =
+    taskItems.filter((i) => i.projectId === id).length +
+    benchItems.filter((i) => i.projectId === id).length +
+    shipments.filter((i) => i.projectId === id).length +
+    activityLog.filter((i) => i.projectId === id).length;
+  const warning = itemCount > 0
+    ? `Delete "${project.name}"? This permanently deletes its ${itemCount} item${itemCount === 1 ? "" : "s"} (tasks, bench items, shipments, log entries). This can't be undone.`
+    : `Delete "${project.name}"? This can't be undone.`;
+  if (!confirm(warning)) return;
+
+  projects = projects.filter((p) => p.id !== id);
+  taskItems = taskItems.filter((i) => i.projectId !== id);
+  benchItems = benchItems.filter((i) => i.projectId !== id);
+  shipments = shipments.filter((i) => i.projectId !== id);
+  activityLog = activityLog.filter((i) => i.projectId !== id);
+
+  saveProjects();
+  saveTaskItems();
+  saveBenchItems();
+  saveShipments();
+  saveActivityLog();
+
+  if (activeProjectId === id) {
+    setActiveProjectId(projects[0].id);
+  }
+  taskFormOpen = false;
+  taskEditingId = null;
+  benchFormOpen = false;
+  benchEditingId = null;
+  renderAll();
+  renderProjectSelector();
+}
+
+function closeProjectMenu() {
+  const menu = document.getElementById("project-picker-menu");
+  const trigger = document.getElementById("project-picker-trigger");
+  if (menu) menu.hidden = true;
+  if (trigger) trigger.setAttribute("aria-expanded", "false");
+}
+
 function renderProjectSelector() {
   const container = document.getElementById("project-selector");
   if (!container) return;
-  const options = projects
-    .map((p) => `<option value="${escapeAttr(p.id)}" ${p.id === activeProjectId ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
+  const activeProject = projects.find((p) => p.id === activeProjectId);
+
+  const rows = projects
+    .map((p) => `
+      <div class="project-picker-row ${p.id === activeProjectId ? "is-active" : ""}">
+        <button type="button" class="project-picker-name" data-select="${escapeAttr(p.id)}">${escapeHtml(p.name)}</button>
+        <div class="project-picker-row-actions">
+          <button type="button" class="project-picker-icon-btn" data-rename="${escapeAttr(p.id)}" aria-label="Rename project" title="Rename project">${pencilIconHtml()}</button>
+          <button type="button" class="project-picker-icon-btn project-picker-icon-btn-danger" data-delete="${escapeAttr(p.id)}" aria-label="Delete project" title="Delete project">${trashIconHtml()}</button>
+        </div>
+      </div>
+    `)
     .join("");
+
   container.innerHTML = `
-    <select id="project-select" class="project-select" aria-label="Select project">
-      ${options}
-      <option value="__new__">+ Add a project&hellip;</option>
-    </select>
+    <div class="project-picker" id="project-picker">
+      <button type="button" id="project-picker-trigger" class="project-picker-trigger" aria-haspopup="true" aria-expanded="false">
+        <span class="project-picker-label">${escapeHtml(activeProject ? activeProject.name : "Select project")}</span>
+        <span class="project-picker-chevron">&#9662;</span>
+      </button>
+      <div class="project-picker-menu" id="project-picker-menu" hidden>
+        ${rows}
+        <button type="button" class="project-picker-add" data-add="1">+ Add a project&hellip;</button>
+      </div>
+    </div>
   `;
-  document.getElementById("project-select").addEventListener("change", (e) => {
-    if (e.target.value === "__new__") {
-      const name = prompt("Name this project (e.g. Car No. 2):");
-      if (!name || !name.trim()) {
-        renderProjectSelector();
-        return;
-      }
-      const project = {
-        id: "proj" + Date.now(),
-        name: name.trim(),
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-      projects.push(project);
-      saveProjects();
-      switchProject(project.id);
+
+  const trigger = document.getElementById("project-picker-trigger");
+  const menu = document.getElementById("project-picker-menu");
+
+  trigger.addEventListener("click", () => {
+    const open = !menu.hidden;
+    if (open) {
+      closeProjectMenu();
     } else {
-      switchProject(e.target.value);
+      menu.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+    }
+  });
+
+  menu.addEventListener("click", (e) => {
+    const selectBtn = e.target.closest("[data-select]");
+    const renameBtn = e.target.closest("[data-rename]");
+    const deleteBtn = e.target.closest("[data-delete]");
+    const addBtn = e.target.closest("[data-add]");
+
+    if (renameBtn) {
+      e.stopPropagation();
+      renameProject(renameBtn.dataset.rename);
+      return;
+    }
+    if (deleteBtn) {
+      e.stopPropagation();
+      deleteProject(deleteBtn.dataset.delete);
+      return;
+    }
+    if (addBtn) {
+      closeProjectMenu();
+      addProjectPrompt();
+      return;
+    }
+    if (selectBtn) {
+      closeProjectMenu();
+      if (selectBtn.dataset.select !== activeProjectId) switchProject(selectBtn.dataset.select);
     }
   });
 }
+
+document.addEventListener("click", (e) => {
+  const picker = document.getElementById("project-picker");
+  if (picker && !picker.contains(e.target)) closeProjectMenu();
+});
 
 /* ---------- Dashboard ---------- */
 

@@ -175,9 +175,19 @@ button,
   margin-top: 2px;
 }
 
-.project-select {
-  width: 100%;
+.project-picker {
+  position: relative;
   margin-top: 6px;
+}
+
+.project-picker-trigger {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
   font-size: 13px;
   font-style: normal;
   color: var(--text);
@@ -188,9 +198,108 @@ button,
   cursor: pointer;
 }
 
-.project-select:focus {
+.project-picker-trigger:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
+}
+
+.project-picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-picker-chevron {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.project-picker-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.project-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+
+.project-picker-row.is-active {
+  background: var(--accent-dim);
+}
+
+.project-picker-name {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-style: normal;
+  color: var(--text);
+  padding: 7px 8px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-picker-row-actions {
+  display: flex;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.project-picker-icon-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.project-picker-icon-btn:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.project-picker-icon-btn-danger:hover {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.project-picker-add {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--accent);
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+}
+
+.project-picker-add:hover {
+  background: var(--panel-2);
 }
 
 nav.tabs {

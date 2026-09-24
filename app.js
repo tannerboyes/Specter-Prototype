@@ -1619,14 +1619,31 @@ document.addEventListener("DOMContentLoaded", checkGate);
 /* ---------- PWA install support ---------- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    // updateViaCache: "none" stops the browser from using its own HTTP
+    // cache to decide whether sw.js changed — without it, an installed
+    // app can keep comparing against a stale cached copy of sw.js itself
+    // and never detect that a new version was published.
+    navigator.serviceWorker
+      .register("sw.js", { updateViaCache: "none" })
+      .then((reg) => reg.update())
+      .catch(() => {});
   });
 
   // Without this, an installed home-screen app can keep serving a stale
   // cached version indefinitely, since reopening it doesn't force a
   // reload the way visiting a page fresh in a browser tab would.
+  //
+  // controllerchange also fires the very first time a service worker ever
+  // claims an uncontrolled page (a fresh install, not an update) — reloading
+  // then would just interrupt a page that was already loading fine, so only
+  // reload when a controller is being replaced, not adopted for the first time.
   let refreshedAfterUpdate = false;
+  let hadControllerAtLoad = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadControllerAtLoad) {
+      hadControllerAtLoad = true;
+      return;
+    }
     if (refreshedAfterUpdate) return;
     refreshedAfterUpdate = true;
     window.location.reload();

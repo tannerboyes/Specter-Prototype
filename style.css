@@ -397,7 +397,8 @@ h2 {
 }
 
 .ship-tracking-input,
-.ship-confirmation-input {
+.ship-confirmation-input,
+.task-actual-time-input {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -409,7 +410,8 @@ h2 {
 }
 
 .ship-tracking-input:focus,
-.ship-confirmation-input:focus {
+.ship-confirmation-input:focus,
+.task-actual-time-input:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }

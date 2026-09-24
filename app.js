@@ -433,6 +433,9 @@ function taskFormHtml() {
         <label class="field-label" for="af-what">What needs doing</label>
         <input type="text" id="af-what" placeholder="e.g. Confirm the rear door pattern" value="${editing ? escapeAttr(editing.whatNeedsDoing) : ""}" required />
 
+        <label class="field-label" for="af-estimate">Estimated time (optional)</label>
+        <input type="text" id="af-estimate" placeholder="e.g. 2 hours" value="${editing ? escapeAttr(editing.estimatedTime || "") : ""}" />
+
         <label class="field-label" for="af-category">Category</label>
         <input type="text" id="af-category" placeholder="e.g. Interior" value="${editing ? escapeAttr(editing.category) : ""}" />
         <div class="bench-pills" id="task-category-pills">
@@ -498,6 +501,7 @@ function wireTaskForm() {
 
     const submitter = document.getElementById("af-name").value.trim();
     const whatNeedsDoing = document.getElementById("af-what").value.trim();
+    const estimatedTime = document.getElementById("af-estimate").value.trim();
     const category = document.getElementById("af-category").value.trim();
     const reason = document.getElementById("af-reason").value.trim();
     const checkFirst = document.getElementById("af-checkfirst").value.trim();
@@ -507,6 +511,7 @@ function wireTaskForm() {
       if (item) {
         item.submitter = submitter;
         item.whatNeedsDoing = whatNeedsDoing;
+        item.estimatedTime = estimatedTime;
         item.category = category;
         item.reason = reason;
         item.checkFirst = checkFirst;
@@ -519,12 +524,14 @@ function wireTaskForm() {
         createdAt: new Date().toISOString().slice(0, 10),
         submitter,
         whatNeedsDoing,
+        estimatedTime,
         category,
         reason,
         checkFirst,
         links,
         done: false,
         doneAt: null,
+        actualTime: "",
       });
     }
 
@@ -557,13 +564,18 @@ function taskItemCardHtml(item) {
         </div>
         <span class="badge ${item.done ? "badge-complete" : "badge-in-progress"}">${item.done ? "Done" : "Open"}</span>
       </div>
-      <div class="bench-item-meta">Added by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}</div>
+      <div class="bench-item-meta">Added by ${escapeHtml(item.submitter || "Unknown")} &middot; ${escapeHtml(item.createdAt)}${item.estimatedTime ? ` &middot; Est. ${escapeHtml(item.estimatedTime)}` : ""}</div>
       <div class="item-notes">${escapeHtml(item.reason)}</div>
       ${item.checkFirst ? `<p class="bench-before"><strong>Check first:</strong> ${escapeHtml(item.checkFirst)}</p>` : ""}
       ${item.links.length ? `
         <div class="bench-more-links">
           ${item.links.map((l) => `<a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join("")}
         </div>` : ""}
+
+      ${item.done ? `
+      <label class="field-label" for="actual-${item.id}">Actual time (optional)</label>
+      <input type="text" id="actual-${item.id}" class="task-actual-time-input" data-item="${item.id}" value="${escapeAttr(item.actualTime || "")}" placeholder="e.g. 3 hours" />
+      ` : ""}
 
       <div class="item-actions-bar">
         <button type="button" class="action-btn" data-edit-item="${item.id}">${pencilIconHtml()} Edit</button>
@@ -580,6 +592,15 @@ function taskItemCardHtml(item) {
 
 function wireTaskList() {
   wireComments("#tasks", taskItems, saveTaskItems, renderTasks);
+
+  document.querySelectorAll("#tasks .task-actual-time-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const item = taskItems.find((i) => i.id === input.dataset.item);
+      if (!item) return;
+      item.actualTime = input.value.trim();
+      saveTaskItems();
+    });
+  });
 
   document.querySelectorAll("#tasks [data-edit-item]").forEach((btn) => {
     btn.addEventListener("click", () => {

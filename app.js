@@ -129,29 +129,41 @@ function setActiveProjectId(id) {
 }
 
 // Makes sure a project always exists and every item belongs to one —
-// migrates any pre-multi-project data (no projectId yet) onto a single
-// default project the first time this runs.
-function ensureDefaultProject() {
+// migrates any pre-multi-project data (no projectId, or a projectId that no
+// longer matches any project — e.g. recovering items orphaned by a previous
+// sync race) onto a single default/fallback project.
+//
+// persist=false skips writing to localStorage/Supabase entirely: used for
+// the very first synchronous render on load, before bootstrapFromSupabase()
+// has had a chance to pull down the real remote state. Without this, a
+// fresh install with empty local storage would push its (incomplete, local
+// state) default project up to Supabase and delete every other project
+// that was only known to the server — exactly what caused a real data-loss
+// bug here.
+function ensureDefaultProject(persist) {
+  if (persist === undefined) persist = true;
+
   if (projects.length === 0) {
     projects = [{
       id: DEFAULT_PROJECT_ID,
       name: DATA.meta.carName || "Default Project",
       createdAt: DATA.meta.updated || new Date().toISOString().slice(0, 10),
     }];
-    saveProjects();
+    if (persist) saveProjects();
   }
 
   const fallbackId = projects[0].id;
+  const validIds = new Set(projects.map((p) => p.id));
   let changed = false;
   [taskItems, benchItems, shipments, activityLog].forEach((arr) => {
     arr.forEach((item) => {
-      if (!item.projectId) {
+      if (!item.projectId || !validIds.has(item.projectId)) {
         item.projectId = fallbackId;
         changed = true;
       }
     });
   });
-  if (changed) {
+  if (changed && persist) {
     saveTaskItems();
     saveBenchItems();
     saveShipments();
@@ -1592,7 +1604,7 @@ function initApp() {
   shipments = loadShipments();
   projects = loadProjects();
   activeProjectId = loadActiveProjectId();
-  ensureDefaultProject();
+  ensureDefaultProject(false);
   renderAll();
   renderProjectSelector();
   initNav();

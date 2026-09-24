@@ -1,5 +1,94 @@
 /* Specter Prototype tracker — rendering logic. Edit data.js, not this file, to update content. */
 
+/* ---------- Supabase sync ---------- */
+/*
+ * Shared data store so Tasks/Bench/Shipments/Build Log sync across every
+ * browser and device instead of being stuck in one browser's localStorage.
+ * The publishable key is meant to be public in client-side code; access
+ * control is the app's own password gate, not this key.
+ */
+
+const SUPABASE_URL = "https://mopbcmurfguubahthaho.supabase.co";
+const SUPABASE_KEY = "sb_publishable_jQQaI6HbSvwePBQxGqZFgA_niWC1QFe";
+
+async function supabaseFetchTable(table) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=data`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Supabase fetch failed for ${table}: ${res.status}`);
+  const rows = await res.json();
+  return rows.map((r) => r.data);
+}
+
+async function supabaseSyncTable(table, items) {
+  try {
+    if (items.length === 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=neq.__none__`, {
+        method: "DELETE",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      });
+      return;
+    }
+    const idList = items.map((it) => it.id).join(",");
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=not.in.(${idList})`, {
+      method: "DELETE",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(items.map((it) => ({ id: it.id, data: it, updated_at: new Date().toISOString() }))),
+    });
+  } catch (e) {
+    console.warn(`Supabase sync failed for ${table}`, e);
+  }
+}
+
+async function bootstrapFromSupabase() {
+  try {
+    const [tasks, bench, ships, log] = await Promise.all([
+      supabaseFetchTable("tasks"),
+      supabaseFetchTable("bench_items"),
+      supabaseFetchTable("shipments"),
+      supabaseFetchTable("activity_log"),
+    ]);
+
+    // If the shared table is empty but this browser already has local data
+    // (e.g. the first load after turning this on), push it up instead of
+    // wiping it with the empty remote table.
+    if (tasks.length === 0 && taskItems.length > 0) supabaseSyncTable("tasks", taskItems);
+    else taskItems = tasks;
+
+    if (bench.length === 0 && benchItems.length > 0) supabaseSyncTable("bench_items", benchItems);
+    else benchItems = bench;
+
+    if (ships.length === 0 && shipments.length > 0) supabaseSyncTable("shipments", shipments);
+    else shipments = ships;
+
+    if (log.length === 0 && activityLog.length > 0) supabaseSyncTable("activity_log", activityLog);
+    else activityLog = log;
+
+    try {
+      localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(taskItems));
+      localStorage.setItem(BENCH_STORAGE_KEY, JSON.stringify(benchItems));
+      localStorage.setItem(SHIPMENT_STORAGE_KEY, JSON.stringify(shipments));
+      localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(activityLog));
+    } catch (e) {}
+    renderDashboard();
+    renderTasks();
+    renderBench();
+    renderShipments();
+    renderLog();
+  } catch (e) {
+    console.warn("Supabase bootstrap failed, showing local data only", e);
+  }
+}
+
 /* ---------- Dashboard ---------- */
 
 function renderDashboard() {
@@ -69,6 +158,7 @@ function loadTaskItems() {
 
 function saveTaskItems() {
   try { localStorage.setItem(TASK_STORAGE_KEY, JSON.stringify(taskItems)); } catch (e) {}
+  supabaseSyncTable("tasks", taskItems);
 }
 
 function taskLinkRowHtml(rowId, link) {
@@ -334,10 +424,16 @@ function loadActivityLog() {
 
 function saveActivityLog() {
   try { localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(activityLog)); } catch (e) {}
+  supabaseSyncTable("activity_log", activityLog);
 }
 
 function addLogEntry(title, body) {
-  activityLog.unshift({ date: new Date().toISOString().slice(0, 10), title, body });
+  activityLog.unshift({
+    id: "log" + Date.now() + Math.random().toString(36).slice(2, 7),
+    date: new Date().toISOString().slice(0, 10),
+    title,
+    body,
+  });
   saveActivityLog();
 }
 
@@ -536,6 +632,7 @@ function loadBenchItems() {
 
 function saveBenchItems() {
   try { localStorage.setItem(BENCH_STORAGE_KEY, JSON.stringify(benchItems)); } catch (e) {}
+  supabaseSyncTable("bench_items", benchItems);
 }
 
 function escapeHtml(str) {
@@ -928,7 +1025,7 @@ function renderBench() {
     ? benchFormHtml()
     : `
       <h1>Bench</h1>
-      <p class="view-sub">Parts that need a decision before they're ordered. Saved in this browser.</p>
+      <p class="view-sub">Parts that need a decision before they're ordered.</p>
       <button type="button" id="bench-open" class="bench-primary-btn">+ Add an item to the bench</button>
     `;
 
@@ -966,6 +1063,7 @@ function loadShipments() {
 
 function saveShipments() {
   try { localStorage.setItem(SHIPMENT_STORAGE_KEY, JSON.stringify(shipments)); } catch (e) {}
+  supabaseSyncTable("shipments", shipments);
 }
 
 function createShipmentFromBenchApproval(item, chosenOption) {
@@ -1114,6 +1212,7 @@ function initApp() {
   renderShipments();
   renderLog();
   initNav();
+  bootstrapFromSupabase();
 }
 
 /* ---------- Password gate ---------- */

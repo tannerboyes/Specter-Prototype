@@ -549,7 +549,7 @@ function closeTaskForm() {
 
 function taskItemCardHtml(item) {
   return `
-    <div class="bench-item-card">
+    <div class="bench-item-card ${item.done ? "is-done" : ""}">
       <div class="item-head">
         <div class="item-name">
           ${escapeHtml(item.whatNeedsDoing)}
@@ -639,7 +639,7 @@ function renderTasks() {
       <button type="button" id="task-open" class="bench-primary-btn">+ Add task</button>
     `;
 
-  const projectTasks = taskItems.filter(inActiveProject);
+  const projectTasks = taskItems.filter(inActiveProject).sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
   const list = projectTasks.length
     ? `<div class="bench-item-list">${projectTasks.map(taskItemCardHtml).join("")}</div>`
     : `<p class="view-sub">Nothing on the list right now.</p>`;

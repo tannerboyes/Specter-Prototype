@@ -709,6 +709,17 @@ h2 {
   padding: 16px 18px;
 }
 
+.bench-item-card.is-done {
+  background: var(--panel-2);
+  color: var(--text-dim);
+}
+
+.bench-item-card.is-done .item-name {
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-color: var(--border);
+}
+
 .bench-eyebrow {
   display: flex;
   align-items: center;

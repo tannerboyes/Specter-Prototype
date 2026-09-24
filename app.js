@@ -403,33 +403,6 @@ function extractDomainLabel(url) {
   }
 }
 
-const TWO_PART_TLDS = new Set([
-  "co.uk", "org.uk", "ac.uk", "gov.uk", "co.nz", "co.za", "co.jp",
-  "co.in", "co.kr", "com.au", "com.br", "com.mx",
-]);
-
-function guessVendorFromUrl(url) {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    const parts = host.split(".");
-    let label;
-    if (parts.length >= 3 && TWO_PART_TLDS.has(parts.slice(-2).join("."))) {
-      label = parts[parts.length - 3];
-    } else if (parts.length > 2) {
-      label = parts[parts.length - 2];
-    } else {
-      label = parts[0];
-    }
-    return label
-      .split(/[-_]/)
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
-  } catch (e) {
-    return "";
-  }
-}
-
 function editIconHtml(itemId) {
   return `<button type="button" class="edit-icon" data-edit-item="${itemId}" aria-label="Edit">&#9998;</button>`;
 }
@@ -609,7 +582,7 @@ function benchOptionBlockHtml(blockId, number, opt) {
       <label class="field-label" for="${blockId}-what">What it is</label>
       <input type="text" id="${blockId}-what" class="bo-what" placeholder="e.g. Genuine upper shroud LR048112" value="${escapeAttr(opt.whatItIs || "")}" required />
 
-      <div class="bench-option-row">
+      <div class="bench-option-row bench-option-row-3">
         <div>
           <label class="field-label" for="${blockId}-vendor">Vendor</label>
           <input type="text" id="${blockId}-vendor" class="bo-vendor" value="${escapeAttr(opt.vendor || "")}" />
@@ -617,6 +590,10 @@ function benchOptionBlockHtml(blockId, number, opt) {
         <div>
           <label class="field-label" for="${blockId}-partnum">Part number</label>
           <input type="text" id="${blockId}-partnum" class="bo-partnum" value="${escapeAttr(opt.partNumber || "")}" />
+        </div>
+        <div>
+          <label class="field-label" for="${blockId}-price">Price</label>
+          <input type="text" id="${blockId}-price" class="bo-price" placeholder="e.g. $45.00" value="${escapeAttr(opt.price || "")}" />
         </div>
       </div>
 
@@ -724,17 +701,6 @@ function wireBenchForm() {
     }
   });
 
-  optionsContainer.addEventListener("change", (e) => {
-    const linkInput = e.target.closest(".bo-link");
-    if (!linkInput || !linkInput.value.trim()) return;
-    const block = linkInput.closest(".bench-option-block");
-    const vendorInput = block.querySelector(".bo-vendor");
-    if (vendorInput && !vendorInput.value.trim()) {
-      const guess = guessVendorFromUrl(linkInput.value.trim());
-      if (guess) vendorInput.value = guess;
-    }
-  });
-
   document.getElementById("bench-cancel").addEventListener("click", () => {
     closeBenchForm();
   });
@@ -752,6 +718,7 @@ function wireBenchForm() {
         whatItIs: block.querySelector(".bo-what").value.trim(),
         vendor: block.querySelector(".bo-vendor").value.trim(),
         partNumber: block.querySelector(".bo-partnum").value.trim(),
+        price: block.querySelector(".bo-price").value.trim(),
         link: block.querySelector(".bo-link").value.trim(),
         picture: block.querySelector(".bo-picture").value.trim(),
         notes: block.querySelector(".bo-notes").value.trim(),
@@ -842,7 +809,7 @@ function benchOptionCardHtml(item, opt) {
             <div class="bench-option-what">${escapeHtml(opt.whatItIs || "Untitled option")}</div>
             ${editIconHtml(item.id)}
           </div>
-          ${(opt.vendor || opt.partNumber) ? `<div class="bench-option-meta">${[opt.vendor, opt.partNumber].filter(Boolean).map(escapeHtml).join(" &middot; ")}</div>` : ""}
+          ${(opt.vendor || opt.partNumber || opt.price) ? `<div class="bench-option-meta">${[opt.vendor, opt.partNumber, opt.price].filter(Boolean).map(escapeHtml).join(" &middot; ")}</div>` : ""}
         </div>
       </div>
 

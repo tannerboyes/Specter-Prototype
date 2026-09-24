@@ -511,6 +511,10 @@ h2 {
   gap: 12px;
 }
 
+.bench-option-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 .bench-recommend {
   display: flex;
   align-items: center;
@@ -982,7 +986,7 @@ h2 {
 }
 
 @media (max-width: 520px) {
-  .bench-option-row { grid-template-columns: 1fr; }
+  .bench-option-row, .bench-option-row-3 { grid-template-columns: 1fr; }
   .bench-option-card-head { flex-direction: column; padding-right: 0; }
   .option-recommended-tag { position: static; display: block; margin-bottom: 6px; }
 }

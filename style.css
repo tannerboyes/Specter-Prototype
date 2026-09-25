@@ -1233,4 +1233,11 @@ h2 {
   }
   nav.tabs { flex-direction: row; flex-wrap: wrap; }
   main { padding: 20px; }
+
+  /* iOS Safari auto-zooms the page when a focused text input's font size is
+     under 16px, and doesn't reliably zoom back out afterward. Bumping every
+     form control to 16px on mobile stops the zoom from ever triggering. */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }

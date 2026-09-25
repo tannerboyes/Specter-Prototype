@@ -32,8 +32,12 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
 
+  // cache: "no-store" bypasses the browser's own HTTP cache too — without
+  // it, "network first" could still silently return a stale response the
+  // browser had cached from an earlier visit, well before ever reaching
+  // the actual network.
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: "no-store" })
       .then((res) => {
         if (res.ok) caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone()));
         return res;
